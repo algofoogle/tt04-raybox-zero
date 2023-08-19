@@ -1,17 +1,29 @@
 --- 
 # TinyTapeout project information
 project:
-  wokwi_id:    0        # If using wokwi, set this to your project's ID
+  wokwi_id:    0        # 0, because we're not using a Wokwi project.
 
-# If using an HDL, set wokwi_id as 0 and uncomment and list your source files here. 
-# Source files must be in ./src and you must list each source file separately
-#  source_files:        
-#    - counter.v
-#    - decoder.v
-#  top_module:  "tt_um_example"      # Put the name of your top module here, must start with "tt_um_". Make it unique by including your github username
+  # If using an HDL, set wokwi_id as 0 and uncomment and list your source files here. 
+  # Source files must be in ./src and you must list each source file separately.
+  #NOTE: Most sources are from the raybox-zero git submodule, hence the longer paths:
+  source_files:
+    - top.v
+    - raybox-zero/src/rtl/fixed_point_params.v
+    - raybox-zero/src/rtl/rbzero.v
+    - raybox-zero/src/rtl/debug_overlay.v
+    - raybox-zero/src/rtl/map_overlay.v
+    - raybox-zero/src/rtl/map_rom.v
+    - raybox-zero/src/rtl/pov.v
+    - raybox-zero/src/rtl/lzc.v
+    - raybox-zero/src/rtl/reciprocal.v
+    - raybox-zero/src/rtl/wall_tracer.v
+    - raybox-zero/src/rtl/row_render.v
+    - raybox-zero/src/rtl/vga_mux.v
+    - raybox-zero/src/rtl/vga_sync.v
+  top_module:  "tt_um_algofoogle_raybox_zero"      # Must start with "tt_um_".
 
-# How many tiles your design occupies? A single tile is about 167x108 uM.
-  tiles: "1x1"    # Valid values: 1x1, 1x2, 2x2, 4x2 or 8x2
+  # How many tiles your design occupies? A single tile is about 167x108 uM.
+  tiles: "8x2"    # Valid values: 1x1, 1x2, 2x2, 4x2 or 8x2
 
 # Keep a track of the submission yaml
 yaml_version: 4
@@ -21,10 +33,10 @@ yaml_version: 4
 #
 # Here is a great example: https://github.com/davidsiaw/tt02-davidsiaw-stackcalc/blob/38c5647f83aad2aec675d566aa3d67b98f0aac81/info.yaml
 documentation: 
-  author:       ""      # Your name
-  title:        ""      # Project title
-  language:     "Wokwi" # other examples include Verilog, Amaranth, VHDL, etc
-  description:  ""      # Short description of what your project does
+  author:       "algofoogle (Anton Maurovic)"
+  title:        "raybox-zero"
+  language:     "Verilog"
+  description:  "Simple VGA ray caster game demo"      # Short description of what your project does
 
 # Longer description of how the project works. You can use standard markdown format.
   how_it_works: |
@@ -46,14 +58,14 @@ documentation:
     - none
 # A description of what the outputs do (e.g. status LED, SPI MISO, etc)
   outputs:
-    - segment a
-    - segment b
-    - segment c
-    - segment d
-    - segment e
-    - segment f
-    - segment g
-    - dot
+    - hsync_n
+    - vsync_n
+    - red[0]
+    - red[1]
+    - green[0]
+    - green[1]
+    - blue[0]
+    - blue[1]
 # A description of what the bidirectional I/O pins do (e.g. I2C SDA, I2C SCL, etc)
   bidirectional:
     - none
@@ -66,9 +78,9 @@ documentation:
     - none
 
 # The following fields are optional
-  tag:          ""      # comma separated list of tags: test, encryption, experiment, clock, animation, utility, industrial, pwm, fpga, alu, microprocessor, risc, riscv, sensor, signal generator, fft, filter, music, bcd, sound, serial, timer, random number generator, calculator, decoder, counter, puzzle, multiplier, game, oscillator,
-  external_hw:  ""      # Describe any external hardware needed
-  discord:      ""      # Your discord handle, used for communication and automatically assigning tapeout role after a submission
-  doc_link:     ""      # URL to longer form documentation, eg the README.md in your repository
-  clock_hz:     0       # Clock frequency in Hz (if required)
+  tag:          "vga, demo, game"      # comma separated list of tags: test, encryption, experiment, clock, animation, utility, industrial, pwm, fpga, alu, microprocessor, risc, riscv, sensor, signal generator, fft, filter, music, bcd, sound, serial, timer, random number generator, calculator, decoder, counter, puzzle, multiplier, game, oscillator,
+  external_hw:  "VGA connector with RGB222 DAC"      # Describe any external hardware needed
+  discord:      "algofoogle"      # Your discord handle, used for communication and automatically assigning tapeout role after a submission
+  doc_link:     "https://github.com/algofoogle/tt04-raybox-zero/blob/main/README.md"      # URL to longer form documentation, eg the README.md in your repository
+  clock_hz:     25000000       # Clock frequency in Hz (if required). 25.175MHz is ideal, but 25.0MHz is fine.
   picture:      ""      # relative path to a picture in your repository (must be 512kb or less)
