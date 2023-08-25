@@ -133,6 +133,8 @@ done
 
 m=stats.md
 
+git log -1 --no-merges --pretty="### [\`%h\`](https://github.com/algofoogle/tt04-raybox-zero/commit/%h?diff=split): %<(113,trunc)%s" > $m
+
 for p in \
     _header \
     cells_pre_abc \
@@ -144,7 +146,7 @@ for p in \
 ; do
     case $p in
         _header)
-            echo -n '| ' > $m #NOTE: '>' to start the file.
+            echo -n '| ' >> $m
             ;;
         suggested_clock_frequency)
             echo -n '| suggested_mhz ' >> $m
