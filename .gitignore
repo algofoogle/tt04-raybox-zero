@@ -8,3 +8,6 @@ src/__pycache__/
 src/__tinytapeout
 src/results.xml
 src/user_config.tcl
+?x?-combo-?.txt
+stats.md
+*.backup
