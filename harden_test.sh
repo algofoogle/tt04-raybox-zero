@@ -124,6 +124,11 @@ for tiles in 4x2 8x2; do
     done
 done
 
+for file in info.yaml src/config.tcl; do
+    echo "Restoring $file.backup to $file"
+    cp $file.backup $file
+done
+
 # Convert stats to Markdown:
 
 m=stats.md
@@ -180,3 +185,5 @@ for p in \
         echo '|-|-:|-:|-:|-:|-:|-:|-:|-:|' >> $m
     fi
 done
+
+echo "Wrote results table to: $m"
