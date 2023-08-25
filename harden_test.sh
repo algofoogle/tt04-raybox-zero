@@ -154,22 +154,22 @@ for p in \
             echo -n '| ' >> $m
             case $p in
                 _header)
-                    echo -n "$t:$c" >> $m
+                    printf "$t:$c" >> $m
                     ;;
                 cells_pre_abc | TotalCells)
-                    echo -n "$(fgrep $p $f | egrep -o '[-0-9]+')" >> $m
+                    printf "%'d" $(fgrep $p $f | egrep -o '[-0-9]+') >> $m
                     ;;
                 suggested_clock_frequency)
-                    echo -n "$(fgrep $p $f | egrep -o '[0-9]+\.[0-9]{1,3}')" >> $m
+                    printf "%'.2f" $(fgrep $p $f | egrep -o '[0-9]+\.[0-9]{1,3}') >> $m
                     ;;
                 logic_cells)
-                    echo -n "$(fgrep 'total cells' $f | egrep -o '[0-9]+')" >> $m
+                    printf "%'d" $(fgrep 'total cells' $f | egrep -o '[0-9]+') >> $m
                     ;;
                 'utilisation_%')
-                    echo -n "$(egrep '\| [.0-9]+ \| [0-9]+ \|' $f | egrep -o '[0-9]+\.[0-9]+')" >> $m
+                    printf "%'.2f" $(egrep '\| [.0-9]+ \| [0-9]+ \|' $f | egrep -o '[0-9]+\.[0-9]+') >> $m
                     ;;
                 wire_length_um)
-                    echo -n "$(egrep '\| [.0-9]+ \| [0-9]+ \|' $f | egrep -o '\s[0-9]{3,}\s')" >> $m
+                    printf "%'d" $(egrep '\| [.0-9]+ \| [0-9]+ \|' $f | egrep -o '\s[0-9]{3,}\s') >> $m
                     ;;
             esac
             echo -n ' ' >> $m
