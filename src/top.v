@@ -15,6 +15,9 @@ module tt_um_algofoogle_raybox_zero(
   rbzero rbzero(
     .clk    (clk),
     .reset  (~rst_n),
+    .i_sclk (ui_in[0]),
+    .i_mosi (ui_in[1]),
+    .i_ss_n (ui_in[2]),
     .hsync_n(uo_out[0]),
     .vsync_n(uo_out[1]),
     .rgb    (uo_out[7:2])

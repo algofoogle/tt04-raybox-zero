@@ -10,4 +10,5 @@ src/results.xml
 src/user_config.tcl
 ?x?-combo-?.txt
 stats.md
+stats-*.md
 *.backup
