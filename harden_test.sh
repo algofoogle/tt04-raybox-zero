@@ -178,10 +178,10 @@ for p in \
                     printf "%'d" $(fgrep 'total cells' $f | egrep -o '[0-9]+') >> $m
                     ;;
                 'utilisation_%')
-                    printf "%'.2f" $(egrep '\| [.0-9]+ \| [0-9]+ \|' $f | egrep -o '[0-9]+\.[0-9]+') >> $m
+                    printf "%'.2f" $(egrep '\| [.0-9]+ \| [-]?[0-9]+ \|' $f | egrep -o '[0-9]+\.[0-9]+') >> $m
                     ;;
                 wire_length_um)
-                    printf "%'d" $(egrep '\| [.0-9]+ \| [0-9]+ \|' $f | egrep -o '\s[0-9]{3,}\s') >> $m
+                    printf "%'d"   $(egrep '\| [.0-9]+ \| [0-9]+ \|' $f | egrep -o '\s[0-9]{3,}\s') >> $m
                     ;;
             esac
             echo -n ' ' >> $m
