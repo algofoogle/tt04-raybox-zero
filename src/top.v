@@ -1,6 +1,10 @@
 `default_nettype none
 `timescale 1ns / 1ps
 
+// `define USE_MAP_OVERLAY
+// `define USE_DEBUG_OVERLAY
+// `define TRACE_STATE_DEBUG  // Trace state is represented visually per each line on-screen.
+
 module tt_um_algofoogle_raybox_zero(
   input  wire [7:0] ui_in,    // Dedicated inputs - connected to the input switches
   output wire [7:0] uo_out,   // Dedicated outputs - connected to the 7 segment display

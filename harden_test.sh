@@ -21,11 +21,7 @@ function logmark {
 # Function to set Gnome terminal title. For more info, see:
 # https://unix.stackexchange.com/a/186167
 function set-title() {
-  if [[ -z "$ORIG" ]]; then
-    ORIG=$PS1
-  fi
-  TITLE="\[\e]2;$*\a\]"
-  PS1=${ORIG}${TITLE}
+  echo -e "\e]2;$*\a"
 }
 
 if ! egrep '^  tiles:\s*"[48]x2"' info.yaml > /dev/null; then
@@ -49,9 +45,13 @@ source ~/tt/venv/bin/activate
 for tiles in 4x2 8x2; do
     # Replace existing 'tiles' parameter:
     sed -i -re 's/^(  tiles:\s*)"[48]x2"/\1"'$tiles'"/' info.yaml
-    for combo in 1 2 3 4; do
+    for combo in 1 2 3 4 5; do
         tag=$tiles-combo-$combo
         stats=$tag.txt
+        if ! echo "$tiles:$combo" | egrep "$1" >/dev/null 2>&1; then
+            echo "Skipping $tag" | tee $stats
+            continue
+        fi
         date > $stats
         logmark "Hardening combo $combo, $tiles"
         set-title $tag
@@ -60,9 +60,10 @@ for tiles in 4x2 8x2; do
         # 2. 50MHz/new-OpenLane/SYNTH_STRATEGY=4
         # 3. 50MHz/OLD-OpenLane/default
         # 4. 50MHz/new-OpenLane/default
+        # 5. 25MHz/new-OpenLane/default/PL_TARGET_DENSITY=65
 
         # Replace CLOCK_PERIOD:
-        if [ $combo -eq 1 ]; then
+        if [ $combo -eq 1 ] || [ $combo -eq 5 ]; then
             # 25MHz clock target (40ns period)
             clk=40
         else
@@ -92,6 +93,21 @@ for tiles in 4x2 8x2; do
             fi
         fi
 
+        if [ $combo -eq 5 ]; then
+            # PL_TARGET_DENSITY 65%
+            # Look for: set ::env(PL_TARGET_DENSITY) 0.65
+            if egrep '^\s*#\s*set\s+::env\(PL_TARGET_DENSITY\)\s+0\.65' src/config.tcl > /dev/null; then
+                # The line exists but is commented, so uncomment it:
+                sed -i -re 's/^\s*#\s*(set\s+::env\(PL_TARGET_DENSITY\)\s+0\.65)/\1/' src/config.tcl
+            elif ! egrep '^\s*set\s+::env\(PL_TARGET_DENSITY\)\s+0\.65' src/config.tcl > /dev/null; then
+                # The line doesn't exist, so add it:
+                echo 'set ::env(PL_TARGET_DENSITY) 0.65' >> src/config.tcl
+            fi
+        else
+            # Comment out any PL_TARGET_DENSITY:
+            sed -i -re 's/^(\s*set\s+::env\(PL_TARGET_DENSITY\)\s)/# \1/' src/config.tcl
+        fi
+
         if [ $combo -eq 3 ]; then
             # OLD OpenLane
             export OPENLANE_ROOT=/home/zerotoasic/asic_tools/openlane
@@ -109,7 +125,7 @@ for tiles in 4x2 8x2; do
         fi
 
         log "=== COMBO $combo CONFIG: ==="
-        egrep 'CLOCK_PERIOD|SYNTH_STRATEGY' src/config.tcl | egrep -v '^\s*#'
+        egrep 'CLOCK_PERIOD|SYNTH_STRATEGY|PL_TARGET_DENSITY' src/config.tcl | egrep -v '^\s*#'
         egrep '^  tiles:' info.yaml
         echo "OpenLane $OPENLANE_TAG"
 
@@ -160,7 +176,7 @@ for p in \
             echo -n "| $p " >> $m
             ;;
     esac
-    for c in 1 2 3 4; do
+    for c in 1 2 3 4 5; do
         for t in 4x2 8x2; do
             f=$t-combo-$c.txt
             echo -n '| ' >> $m
@@ -189,7 +205,7 @@ for p in \
     done
     echo '|' >> $m
     if [ $p == _header ]; then
-        echo '|-|-:|-:|-:|-:|-:|-:|-:|-:|' >> $m
+        echo '|-|-:|-:|-:|-:|-:|-:|-:|-:|-:|-:|' >> $m
     fi
 done
 
