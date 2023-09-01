@@ -234,7 +234,7 @@ for tiles in 4x2 8x2; do
         fi
 
         # Generate stats:
-        summary.py --design . --run 0 --caravel --full-summary | egrep 'pre_abc|clock_freq|TotalCells' >> $stats
+        summary.py --design . --run 0 --caravel --full-summary | egrep 'synth_cell_count|pre_abc|clock_freq|TotalCells|_antenna_violations|spef_wns|spef_tns' >> $stats
         ./tt/tt_tool.py --print-cell-category | fgrep 'total cells' >> $stats
         ./tt/tt_tool.py --print-stats >> $stats
         date >> $stats
@@ -249,12 +249,17 @@ done
 
 # Convert stats to Markdown:
 
+FINISHED="$(stamp)"
+
+
 m="$OUTFILE"
 
 echo > $m # Init the summary file.
 
 cat >> $m <<EOH
 ### $TAG
+
+<details><summary>Click for details...</summary>
 
 Code:
 *   tt04-raybox-zero: $(echo $(
@@ -277,6 +282,13 @@ cat >> $m <<EOH
 
 Summary:
 *   ???
+
+Options used:
+\`\`\`
+$(print_options)
+\`\`\`
+
+</details>
 
 EOH
 
@@ -307,6 +319,11 @@ for p in \
     logic_cells \
     'utilisation_%' \
     wire_length_um \
+    synth_cell_count \
+    pin_antenna_violations \
+    net_antenna_violations \
+    spef_wns \
+    spef_tns \
 ; do
     case $p in
         _header)
@@ -314,6 +331,15 @@ for p in \
             ;;
         suggested_clock_frequency)
             echo -n '| suggested_mhz ' >> $m
+            ;;
+        pin_antenna_violations)
+            echo -n '| pin_antennas ' >> $m
+            ;;
+        net_antenna_violations)
+            echo -n '| net_antennas ' >> $m
+            ;;
+        synth_cell_count)
+            echo -n '| synth_cells ' >> $m
             ;;
         *)
             echo -n "| $p " >> $m
@@ -327,11 +353,11 @@ for p in \
                 _header)
                     printf "$t:$c" >> $m
                     ;;
-                cells_pre_abc | TotalCells)
+                cells_pre_abc | TotalCells | synth_cell_count | pin_antenna_violations | net_antenna_violations)
                     printf "%'d" $(fgrep $p $f | egrep -o '[-0-9]+') >> $m
                     ;;
-                suggested_clock_frequency)
-                    printf "%'.2f" $(fgrep $p $f | egrep -o '[0-9]+\.[0-9]{1,3}') >> $m
+                suggested_clock_frequency | spef_wns | spef_tns)
+                    printf "%'.2f" $(fgrep $p $f | egrep -o '[-0-9]+\.[0-9]{1,3}') >> $m
                     ;;
                 logic_cells)
                     printf "%'d" $(fgrep 'total cells' $f | egrep -o '[0-9]+') >> $m
@@ -352,17 +378,10 @@ for p in \
     fi
 done
 
-FINISHED="$(stamp)"
-
 cat >> $m <<EOH
 
 Findings:
 *   ??
-
-Options used:
-\`\`\`
-$(print_options)
-\`\`\`
 
 EOH
 
