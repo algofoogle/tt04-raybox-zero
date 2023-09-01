@@ -4,12 +4,105 @@
 # - https://github.com/algofoogle/journal/blob/master/0131-2023-08-24.md
 # - https://github.com/algofoogle/journal/blob/master/0132-2023-08-25.md
 
-function log {
-    echo "[$(date)] $*"
+function stamp {
+    date +"%Y-%m-%d %H:%M:%S"
 }
 
+function log {
+    echo "[$(stamp)] $*"
+}
+
+
+function stop {
+    log "STOP: $*"
+    exit 1
+}
+
+function print_options {
+cat <<EOH
+  STARTED: $STARTED
+    STOPT: $STOPT
+  OUTFILE: $OUTFILE
+   SELECT: $SELECT
+    FORCE: $FORCE
+      TAG: $TAG
+ FINISHED: $FINISHED
+EOH
+}
+
+
+# Parse command-line args:
+STARTED="$(stamp)"
+STOPT=0
+OUTFILE=stats-$(date +%y%m%d-%H%M%S).md
+SELECT=
+FORCE=0
+TAG=
+while [ "$#" -gt 0 ]; do
+    OPT=$1; shift
+    if [ "$STOPT" -eq 0 ] && [ '-' == "${OPT:0:1}" ]; then
+        # Option processing in effect:
+        case $OPT in
+            --)
+                # Stop processing remaining args as options.
+                STOPT=1
+                ;;
+            -o)
+                # Specify output summary file instead of default.
+                OUTFILE=$1
+                if [[ -z ${OUTFILE// } ]]; then
+                    stop "-o expects output file, but none given"
+                fi
+                shift
+                ;;
+            -f)
+                # Force-overwrite any existing OUTFILE.
+                FORCE=1
+                ;;
+            -t)
+                # Extra heading tag
+                TAG=$1
+                if [[ -z ${TAG// } ]]; then
+                    stop "-t expects extra heading tag string, but none given"
+                fi
+                shift
+                ;;
+            -h)
+                cat <<EOH
+Usage: $0 [OPTIONS] [SELECT]
+OPTIONS can include:
+    -h          Show this help.
+    -t STRING   Include STRING as an extra heading in the summary file.
+    -o OUTFILE  Specify output summary file instead of default timestamped stats-*.md
+    -f          Force overwriting of OUTFILE if it already exists.
+    --          Stop processing options; remaining arguments are literal.
+SELECT, if provided, is an extended regular expression that will specify which combos to run.
+It gets matched against the name of each combo:
+    4x2:1 4x2:2 ... 4x2:5
+    8x2:1 8x2:2 ... 8x2:5
+EOH
+                exit 0
+                ;;
+            *)
+                stop "Unknown option: $OPT"
+                ;;
+        esac
+    else
+        # Option processing not applicable for this arg:
+        SELECT="$OPT"
+    fi
+done
+
+if [ -e "$OUTFILE" ] && [ $FORCE -eq 0 ]; then
+    # OUTFILE already exists, and FORCE is not specified.
+    stop "Output file already exists and -f not specified: $OUTFILE"
+fi
+
+# stop "BREAKPOINT"
+
+
 function logmark {
-    echo ">>>"
+    echo
     echo ">>>>>"
     echo ">>>>>>>"
     echo ">>>>>>>>> [$(date)] ---  $*"
@@ -42,17 +135,21 @@ done
 # Activate python environment (venv):
 source ~/tt/venv/bin/activate
 
+mkdir JUNK >/dev/null 2>&1
+
 for tiles in 4x2 8x2; do
     # Replace existing 'tiles' parameter:
     sed -i -re 's/^(  tiles:\s*)"[48]x2"/\1"'$tiles'"/' info.yaml
-    for combo in 1 2 3 4 5; do
+    #NOTE: Changed order. We care most about 4x2:5 first, then 4x2:4, etc...
+    for combo in 5 4 1 2 3; do
         tag=$tiles-combo-$combo
-        stats=$tag.txt
-        if ! echo "$tiles:$combo" | egrep "$1" >/dev/null 2>&1; then
+        stats=JUNK/$tag.txt
+        if ! echo "$tiles:$combo" | egrep "$SELECT" >/dev/null 2>&1; then
             echo "Skipping $tag" | tee $stats
             continue
         fi
-        date > $stats
+        stamp > $stats
+
         logmark "Hardening combo $combo, $tiles"
         set-title $tag
         # Combos:
@@ -152,9 +249,55 @@ done
 
 # Convert stats to Markdown:
 
-m=stats.md
+m="$OUTFILE"
 
-git log -1 --no-merges --pretty="### [\`%h\`](https://github.com/algofoogle/tt04-raybox-zero/commit/%h?diff=split): %<(113,trunc)%s" > $m
+echo > $m # Init the summary file.
+
+cat >> $m <<EOH
+### $TAG
+
+Code:
+*   tt04-raybox-zero: $(echo $(
+        git log -1 --no-merges \
+        --pretty="[\`%h\`](https://github.com/algofoogle/tt04-raybox-zero/commit/%h?diff=split): %<(113,trunc)%s"
+    ))
+    *   Equivalent to: [\`\`](): ?
+EOH
+pushd src/raybox-zero
+cat >> ../../$m <<EOH
+*   src/raybox-zero: $(echo $(
+        git log -1 --no-merges \
+        --pretty="[\`%h\`](https://github.com/algofoogle/raybox-zero/commit/%h?diff=split): %<(113,trunc)%s"
+    ))
+EOH
+popd
+cat >> $m <<EOH
+    *   Modified? **($(echo $(git status src/raybox-zero/ -s | fgrep '' || echo No)))**
+    *   Equivalent to: [\`\`](): ?
+
+Summary:
+*   ???
+
+EOH
+
+# echo $( \
+#     git log -1 --no-merges \
+#     --pretty="-   tt04-raybox-zero: [\`%h\`](https://github.com/algofoogle/tt04-raybox-zero/commit/%h?diff=split): %<(113,trunc)%s" \
+# ) > $m
+# echo >> $m
+# pushd src/raybox-zero
+# SUBMOD="$( \
+#     git log -1 --no-merges \
+#     --pretty="-   src/raybox-zero: [\`%h\`](https://github.com/algofoogle/raybox-zero/commit/%h?diff=split): %<(113,trunc)%s" \
+# )"
+# popd
+# echo $SUBMOD '**('$(echo $(git status src/raybox-zero/ -s))')**' >> $m
+# echo >> $m
+
+# if [ ! -z "$TAG" ]; then
+#     echo "### $TAG" >> $m
+#     echo >> $m
+# fi
 
 for p in \
     _header \
@@ -178,7 +321,7 @@ for p in \
     esac
     for c in 1 2 3 4 5; do
         for t in 4x2 8x2; do
-            f=$t-combo-$c.txt
+            f=JUNK/$t-combo-$c.txt
             echo -n '| ' >> $m
             case $p in
                 _header)
@@ -209,4 +352,22 @@ for p in \
     fi
 done
 
+FINISHED="$(stamp)"
+
+cat >> $m <<EOH
+
+Findings:
+*   ??
+
+Options used:
+\`\`\`
+$(print_options)
+\`\`\`
+
+EOH
+
 echo "Wrote results table to: $m"
+
+print_options
+
+set-title "Done $FINISHED"
