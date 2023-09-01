@@ -313,13 +313,13 @@ EOH
 
 for p in \
     _header \
-    cells_pre_abc \
-    TotalCells \
     suggested_clock_frequency \
-    logic_cells \
     'utilisation_%' \
     wire_length_um \
+    TotalCells \
+    cells_pre_abc \
     synth_cell_count \
+    logic_cells \
     pin_antenna_violations \
     net_antenna_violations \
     spef_wns \
