@@ -13,6 +13,10 @@ function log {
 }
 
 
+function dry {
+    [ "$DRY" -eq 0 ] && return 1 || return 0
+}
+
 function stop {
     log "STOP: $*"
     exit 1
@@ -25,13 +29,15 @@ function ssort {
 function print_options {
 cat <<EOH
   STARTED: $STARTED
-    SIZES: $SIZES  (sorted: $(ssort $SIZES))
+    SIZES: $SIZES (sorted: $(ssort $SIZES))
    COMBOS: $COMBOS (sorted: $(ssort $COMBOS))
     STOPT: $STOPT
   OUTFILE: $OUTFILE
    SELECT: $SELECT
     FORCE: $FORCE
       TAG: $TAG
+   RCORES: $RCORES
+      DRY: $DRY
  FINISHED: $FINISHED
 EOH
 }
@@ -46,6 +52,8 @@ OUTFILE=stats-$(date +%y%m%d-%H%M%S).md
 SELECT=
 FORCE=0
 TAG=
+RCORES=
+DRY=0
 while [ "$#" -gt 0 ]; do
     OPT=$1; shift
     if [ "$STOPT" -eq 0 ] && [ '-' == "${OPT:0:1}" ]; then
@@ -83,6 +91,21 @@ while [ "$#" -gt 0 ]; do
                 fi
                 shift
                 ;;
+            -p)
+                # Routing cores.
+                RCORES=$1
+                if [ "$RCORES" -ge 1 ]; then
+                    # OK.
+                    echo "RCORES: $RCORES"
+                else
+                    stop "-p expects routing cores count greater than 0"
+                fi
+                shift
+                ;;
+            -d)
+                # Dry run.
+                DRY=1
+                ;;
             -t)
                 # Extra heading tag
                 TAG=$1
@@ -101,6 +124,8 @@ OPTIONS can include:
     -s SIZES    String that overrides the sizes (and order) to iterate. Default: '4x2 8x2'
     -c COMBOS   String that overrides the combos (and order) to iterate. Default: '5 4 1 2 3'
     -f          Force overwriting of OUTFILE if it already exists.
+    -p RCORES   RCORES is an integer greater than 0 specifying number of OpenLane routing cores.
+    -d          Dry run: Don't do any work.
     --          Stop processing options; remaining arguments are literal.
 SELECT, if provided, is an extended regular expression that will specify which combos to run.
 It gets matched against the name of each combo:
@@ -122,6 +147,12 @@ done
 if [ -e "$OUTFILE" ] && [ $FORCE -eq 0 ]; then
     # OUTFILE already exists, and FORCE is not specified.
     stop "Output file already exists and -f not specified: $OUTFILE"
+fi
+
+
+if dry; then
+    log "DRY RUN MODE"
+    print_options
 fi
 
 # stop "BREAKPOINT"
@@ -167,13 +198,13 @@ for tiles in $SIZES; do
     # Replace existing 'tiles' parameter:
     sed -i -re 's/^(  tiles:\s*)"[1-8]x[1-2]"/\1"'$tiles'"/' info.yaml
     for combo in $COMBOS; do
-        rm -rf runs/wokwi
         tag=$tiles-combo-$combo
         stats=JUNK/$tag.txt
         if ! echo "$tiles:$combo" | egrep "$SELECT" >/dev/null 2>&1; then
             echo "Skipping $tag" | tee $stats
             continue
         fi
+        rm -rf runs/wokwi
         stamp > $stats
 
         logmark "Hardening combo $combo, $tiles"
@@ -253,16 +284,32 @@ for tiles in $SIZES; do
         echo "OpenLane $OPENLANE_TAG"
 
         # Run the harden...
-        if ./tt/tt_tool.py --create-user-config && time ./tt/tt_tool.py --debug --harden; then
-            logmark "OK: $tag"
+                
+        if ./tt/tt_tool.py --create-user-config; then
+            if [ ! -z "$RCORES" ]; then
+                echo "set ::env(ROUTING_CORES) $RCORES" >> src/user_config.tcl
+            fi
+            egrep 'ROUTING_CORES|Project area' src/user_config.tcl
+            if ! dry; then
+                if time ./tt/tt_tool.py --debug --harden; then
+                    logmark "OK: $tag"
+                else
+                    logmark "FAILED harden: $tag"
+                fi
+            else
+                log "Skipping $tag: DRY RUN mode"
+            fi
         else
-            logmark "FAILED: $tag"
+            logmark "FAILED create-user-config: $tag"
         fi
 
-        # Generate stats:
-        summary.py --design . --run 0 --caravel --full-summary | egrep 'synth_cell_count|pre_abc|clock_freq|TotalCells|_antenna_violations|spef_wns|spef_tns' >> $stats
-        ./tt/tt_tool.py --print-cell-category | fgrep 'total cells' >> $stats
-        ./tt/tt_tool.py --print-stats >> $stats
+        if ! dry; then
+            # Generate stats:
+            summary.py --design . --run 0 --caravel --full-summary | egrep 'synth_cell_count|pre_abc|clock_freq|TotalCells|_antenna_violations|spef_wns|spef_tns' >> $stats
+            ./tt/tt_tool.py --print-cell-category | fgrep 'total cells' >> $stats
+            ./tt/tt_tool.py --print-stats >> $stats
+        fi
+
         date >> $stats
 
     done
@@ -280,6 +327,10 @@ done
 
 FINISHED="$(stamp)"
 
+if dry; then
+    log "Exiting due to DRY RUN MODE"
+    exit
+fi
 
 m="$OUTFILE"
 
