@@ -46,8 +46,8 @@ set ::env(DECAP_CELL) "\
 
 # clock
 set ::env(RUN_CTS) 1
-# period is in ns, so 20ns == 50mHz
-set ::env(CLOCK_PERIOD) "20"
+# period is in ns, so 20ns==50MHz and 40ns==25MHz
+set ::env(CLOCK_PERIOD) "40"
 set ::env(CLOCK_PORT) {clk}
 
 # hold/slack margin
@@ -57,7 +57,8 @@ set ::env(CLOCK_PORT) {clk}
 # don't use power rings or met5
 set ::env(DESIGN_IS_CORE) 0
 set ::env(RT_MAX_LAYER) {met4}
-#set ::env(SYNTH_STRATEGY) {DELAY 4}
+# set ::env(SYNTH_STRATEGY) {DELAY 4}
 
-#set ::env(ROUTING_CORES) 15
+#set ::env(ROUTING_CORES) 10
 
+# set ::env(PL_TARGET_DENSITY) 0.65
