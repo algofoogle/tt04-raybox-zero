@@ -18,9 +18,15 @@ function stop {
     exit 1
 }
 
+function ssort {
+    echo $(printf '%s\n' $(echo $*) | sort)
+}
+
 function print_options {
 cat <<EOH
   STARTED: $STARTED
+    SIZES: $SIZES  (sorted: $(ssort $SIZES))
+   COMBOS: $COMBOS (sorted: $(ssort $COMBOS))
     STOPT: $STOPT
   OUTFILE: $OUTFILE
    SELECT: $SELECT
@@ -32,6 +38,8 @@ EOH
 
 
 # Parse command-line args:
+SIZES="4x2 8x2"
+COMBOS="5 4 1 2 3"
 STARTED="$(stamp)"
 STOPT=0
 OUTFILE=stats-$(date +%y%m%d-%H%M%S).md
@@ -59,6 +67,22 @@ while [ "$#" -gt 0 ]; do
                 # Force-overwrite any existing OUTFILE.
                 FORCE=1
                 ;;
+            -s)
+                # Size input overrides.
+                SIZES=$1
+                if [[ -z ${SIZES// } ]]; then
+                    stop "-s expects sizes list (e.g. '4x2 8x2'), but none given"
+                fi
+                shift
+                ;;
+            -c)
+                # Combo input overrides.
+                COMBOS=$1
+                if [[ -z ${COMBOS// } ]]; then
+                    stop "-c expects combos list (e.g. '5 4 1 2 3'), but none given"
+                fi
+                shift
+                ;;
             -t)
                 # Extra heading tag
                 TAG=$1
@@ -74,6 +98,8 @@ OPTIONS can include:
     -h          Show this help.
     -t STRING   Include STRING as an extra heading in the summary file.
     -o OUTFILE  Specify output summary file instead of default timestamped stats-*.md
+    -s SIZES    String that overrides the sizes (and order) to iterate. Default: '4x2 8x2'
+    -c COMBOS   String that overrides the combos (and order) to iterate. Default: '5 4 1 2 3'
     -f          Force overwriting of OUTFILE if it already exists.
     --          Stop processing options; remaining arguments are literal.
 SELECT, if provided, is an extended regular expression that will specify which combos to run.
@@ -137,11 +163,11 @@ source ~/tt/venv/bin/activate
 
 mkdir JUNK >/dev/null 2>&1
 
-for tiles in 4x2 8x2; do
+for tiles in $SIZES; do
     # Replace existing 'tiles' parameter:
-    sed -i -re 's/^(  tiles:\s*)"[48]x2"/\1"'$tiles'"/' info.yaml
-    #NOTE: Changed order. We care most about 4x2:5 first, then 4x2:4, etc...
-    for combo in 5 4 1 2 3; do
+    sed -i -re 's/^(  tiles:\s*)"[1-8]x[1-2]"/\1"'$tiles'"/' info.yaml
+    for combo in $COMBOS; do
+        rm -rf runs/wokwi
         tag=$tiles-combo-$combo
         stats=JUNK/$tag.txt
         if ! echo "$tiles:$combo" | egrep "$SELECT" >/dev/null 2>&1; then
@@ -247,6 +273,9 @@ for file in info.yaml src/config.tcl; do
     cp $file.backup $file
 done
 
+# Recreate user_config.tcl now that we've restored the original config:
+./tt/tt_tool.py --create-user-config
+
 # Convert stats to Markdown:
 
 FINISHED="$(stamp)"
@@ -292,24 +321,6 @@ $(print_options)
 
 EOH
 
-# echo $( \
-#     git log -1 --no-merges \
-#     --pretty="-   tt04-raybox-zero: [\`%h\`](https://github.com/algofoogle/tt04-raybox-zero/commit/%h?diff=split): %<(113,trunc)%s" \
-# ) > $m
-# echo >> $m
-# pushd src/raybox-zero
-# SUBMOD="$( \
-#     git log -1 --no-merges \
-#     --pretty="-   src/raybox-zero: [\`%h\`](https://github.com/algofoogle/raybox-zero/commit/%h?diff=split): %<(113,trunc)%s" \
-# )"
-# popd
-# echo $SUBMOD '**('$(echo $(git status src/raybox-zero/ -s))')**' >> $m
-# echo >> $m
-
-# if [ ! -z "$TAG" ]; then
-#     echo "### $TAG" >> $m
-#     echo >> $m
-# fi
 
 for p in \
     _header \
@@ -345,8 +356,8 @@ for p in \
             echo -n "| $p " >> $m
             ;;
     esac
-    for c in 1 2 3 4 5; do
-        for t in 4x2 8x2; do
+    for c in $(ssort $COMBOS); do
+        for t in $(ssort $SIZES); do
             f=JUNK/$t-combo-$c.txt
             echo -n '| ' >> $m
             case $p in
@@ -354,19 +365,19 @@ for p in \
                     printf "$t:$c" >> $m
                     ;;
                 cells_pre_abc | TotalCells | synth_cell_count | pin_antenna_violations | net_antenna_violations)
-                    printf "%'d" $(fgrep $p $f | egrep -o '[-0-9]+') >> $m
+                    printf "%'d" $(fgrep $p $f 2>/dev/null | egrep -o '[-0-9]+') >> $m
                     ;;
                 suggested_clock_frequency | spef_wns | spef_tns)
-                    printf "%'.2f" $(fgrep $p $f | egrep -o '[-0-9]+\.[0-9]{1,3}') >> $m
+                    printf "%'.2f" $(fgrep $p $f 2>/dev/null | egrep -o '[-0-9]+\.[0-9]{1,3}') >> $m
                     ;;
                 logic_cells)
-                    printf "%'d" $(fgrep 'total cells' $f | egrep -o '[0-9]+') >> $m
+                    printf "%'d" $(fgrep 'total cells' $f 2>/dev/null | egrep -o '[0-9]+') >> $m
                     ;;
                 'utilisation_%')
-                    printf "%'.2f" $(egrep '\| [.0-9]+ \| [-]?[0-9]+ \|' $f | egrep -o '[0-9]+\.[0-9]+') >> $m
+                    printf "%'.2f" $(egrep '\| [.0-9]+ \| [-]?[0-9]+ \|' $f 2>/dev/null | egrep -o '[0-9]+\.[0-9]+') >> $m
                     ;;
                 wire_length_um)
-                    printf "%'d"   $(egrep '\| [.0-9]+ \| [0-9]+ \|' $f | egrep -o '\s[0-9]{3,}\s') >> $m
+                    printf "%'d"   $(egrep '\| [.0-9]+ \| [0-9]+ \|' $f 2>/dev/null | egrep -o '\s[0-9]{3,}\s') >> $m
                     ;;
             esac
             echo -n ' ' >> $m
@@ -374,7 +385,14 @@ for p in \
     done
     echo '|' >> $m
     if [ $p == _header ]; then
-        echo '|-|-:|-:|-:|-:|-:|-:|-:|-:|-:|-:|' >> $m
+        echo -n '|-|' >> $m
+        for dummy in $COMBOS; do
+            for sizes in $SIZES; do
+                echo -n '-:|' >> $m
+            done
+        done
+        # echo '|-|-:|-:|-:|-:|-:|-:|-:|-:|-:|-:|' >> $m
+        echo >> $m
     fi
 done
 
