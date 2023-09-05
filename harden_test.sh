@@ -264,7 +264,10 @@ for tiles in $SIZES; do
             if egrep '^\s*#\s*set\s+::env\(PL_TARGET_DENSITY\)\s+0' src/config.tcl > /dev/null; then
                 # The line exists but is commented, so uncomment it, and make sure it has the correct $DENSITY value:
                 sed -i -re 's/^\s*#\s*(set\s+::env\(PL_TARGET_DENSITY\)\s+)([.0-9]+)/\1'$DENSITY'/' src/config.tcl
-            elif ! egrep '^\s*set\s+::env\(PL_TARGET_DENSITY\)\s+0' src/config.tcl > /dev/null; then
+            elif egrep '^\s*set\s+::env\(PL_TARGET_DENSITY\)\s+0' src/config.tcl > /dev/null; then
+                # The line exists and is NOT commented, so just make sure it has the correct $DENSITY value:
+                sed -i -re 's/^\s*(set\s+::env\(PL_TARGET_DENSITY\)\s+)([.0-9]+)/\1'$DENSITY'/' src/config.tcl
+            else
                 # The line doesn't exist, so add it:
                 echo "set ::env(PL_TARGET_DENSITY) $DENSITY" >> src/config.tcl
             fi
