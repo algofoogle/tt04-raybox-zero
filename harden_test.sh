@@ -31,6 +31,7 @@ cat <<EOH
   STARTED: $STARTED
     SIZES: $SIZES (sorted: $(ssort $SIZES))
    COMBOS: $COMBOS (sorted: $(ssort $COMBOS))
+  DENSITY: $DENSITY
     STOPT: $STOPT
   OUTFILE: $OUTFILE
    SELECT: $SELECT
@@ -46,6 +47,7 @@ EOH
 # Parse command-line args:
 SIZES="4x2 8x2"
 COMBOS="5 4 1 2 3"
+DENSITY=0.65
 STARTED="$(stamp)"
 STOPT=0
 OUTFILE=stats-$(date +%y%m%d-%H%M%S).md
@@ -106,6 +108,14 @@ while [ "$#" -gt 0 ]; do
                 # Dry run.
                 DRY=1
                 ;;
+            -u)
+                # Utilisation/Density.
+                DENSITY=$1
+                if [[ -z ${DENSITY// } ]]; then
+                    stop "-u expects density (e.g. 0.65), but none given"
+                fi
+                shift
+                ;;
             -t)
                 # Extra heading tag
                 TAG=$1
@@ -123,6 +133,7 @@ OPTIONS can include:
     -o OUTFILE  Specify output summary file instead of default timestamped stats-*.md
     -s SIZES    String that overrides the sizes (and order) to iterate. Default: '4x2 8x2'
     -c COMBOS   String that overrides the combos (and order) to iterate. Default: '5 4 1 2 3'
+    -u DENSITY  Utilisation density in range (0.0..1.0). Default: 0.65 
     -f          Force overwriting of OUTFILE if it already exists.
     -p RCORES   RCORES is an integer greater than 0 specifying number of OpenLane routing cores.
     -d          Dry run: Don't do any work.
@@ -249,13 +260,13 @@ for tiles in $SIZES; do
 
         if [ $combo -eq 5 ]; then
             # PL_TARGET_DENSITY 65%
-            # Look for: set ::env(PL_TARGET_DENSITY) 0.65
-            if egrep '^\s*#\s*set\s+::env\(PL_TARGET_DENSITY\)\s+0\.65' src/config.tcl > /dev/null; then
-                # The line exists but is commented, so uncomment it:
-                sed -i -re 's/^\s*#\s*(set\s+::env\(PL_TARGET_DENSITY\)\s+0\.65)/\1/' src/config.tcl
-            elif ! egrep '^\s*set\s+::env\(PL_TARGET_DENSITY\)\s+0\.65' src/config.tcl > /dev/null; then
+            # Look for: set ::env(PL_TARGET_DENSITY) 0...
+            if egrep '^\s*#\s*set\s+::env\(PL_TARGET_DENSITY\)\s+0' src/config.tcl > /dev/null; then
+                # The line exists but is commented, so uncomment it, and make sure it has the correct $DENSITY value:
+                sed -i -re 's/^\s*#\s*(set\s+::env\(PL_TARGET_DENSITY\)\s+)([.0-9]+)/\1'$DENSITY'/' src/config.tcl
+            elif ! egrep '^\s*set\s+::env\(PL_TARGET_DENSITY\)\s+0' src/config.tcl > /dev/null; then
                 # The line doesn't exist, so add it:
-                echo 'set ::env(PL_TARGET_DENSITY) 0.65' >> src/config.tcl
+                echo "set ::env(PL_TARGET_DENSITY) $DENSITY" >> src/config.tcl
             fi
         else
             # Comment out any PL_TARGET_DENSITY:
