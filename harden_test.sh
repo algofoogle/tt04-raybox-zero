@@ -185,7 +185,7 @@ function set-title() {
   echo -e "\e]2;$*\a"
 }
 
-if ! egrep '^  tiles:\s*"[48]x2"' info.yaml > /dev/null; then
+if ! egrep '^  tiles:\s*"[1-8]x[12]"' info.yaml > /dev/null; then
     echo 'Cannot find an expected "tiles" parameter in info.yaml'
     exit 1
 fi
