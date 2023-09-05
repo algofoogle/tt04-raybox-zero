@@ -61,4 +61,4 @@ set ::env(RT_MAX_LAYER) {met4}
 
 #set ::env(ROUTING_CORES) 10
 
-# set ::env(PL_TARGET_DENSITY) 0.65
+set ::env(PL_TARGET_DENSITY) 0.82
