@@ -9,7 +9,9 @@ project:
   source_files:
     - top.v
     - raybox-zero/src/rtl/fixed_point_params.v
+    - raybox-zero/src/rtl/helpers.v
     - raybox-zero/src/rtl/rbzero.v
+    - raybox-zero/src/rtl/spi_registers.v
     - raybox-zero/src/rtl/debug_overlay.v
     - raybox-zero/src/rtl/map_overlay.v
     - raybox-zero/src/rtl/map_rom.v
