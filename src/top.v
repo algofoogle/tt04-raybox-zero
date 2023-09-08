@@ -18,7 +18,7 @@ module tt_um_algofoogle_raybox_zero(
 
   wire [5:0]  rgb;
   wire        vsync_n, hsync_n;
-  reg         unregistered_vga_output = {rgb, vsync_n, hsync_n};
+  wire [7:0]  unregistered_vga_output = {rgb, vsync_n, hsync_n};
   reg [7:0]   registered_vga_output;
 
   always @(posedge clk) registered_vga_output <= unregistered_vga_output;
