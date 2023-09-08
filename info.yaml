@@ -70,14 +70,18 @@ documentation:
       `debug` can be asserted to show current state of POV (point-of-view) registers, which might come in handy
       when trying to debug SPI writes.
 
+      `inc_px` and `inc_py` can be asserted to continuously increment their respective player X/Y position register.
+      Normally the registers should be updated via SPI, but this allows someone to at least see a demo in action
+      without having to implement the SPI host controller.
+
 # A description of what the inputs do (e.g. red button, SPI CLK, SPI MOSI, etc).
   inputs:
     - 'SPI in: sclk'
     - 'SPI in: mosi'
     - 'SPI in: ss_n'
     - debug
-    - none
-    - none
+    - inc_px
+    - inc_py
     - none
     - none
 # A description of what the outputs do (e.g. status LED, SPI MISO, etc)
@@ -92,8 +96,8 @@ documentation:
     - red[1]
 # A description of what the bidirectional I/O pins do (e.g. I2C SDA, I2C SCL, etc)
   bidirectional:
-    - none
-    - none
+    - o_hblank
+    - o_vblank
     - none
     - none
     - none
