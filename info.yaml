@@ -78,7 +78,7 @@ documentation:
     - none
 
 # The following fields are optional
-  tag:          "vga, demo, game"      # comma separated list of tags: test, encryption, experiment, clock, animation, utility, industrial, pwm, fpga, alu, microprocessor, risc, riscv, sensor, signal generator, fft, filter, music, bcd, sound, serial, timer, random number generator, calculator, decoder, counter, puzzle, multiplier, game, oscillator,
+  tag:          "vga, demo, game, graphics, retro, 3d"      # comma separated list of tags: test, encryption, experiment, clock, animation, utility, industrial, pwm, fpga, alu, microprocessor, risc, riscv, sensor, signal generator, fft, filter, music, bcd, sound, serial, timer, random number generator, calculator, decoder, counter, puzzle, multiplier, game, oscillator,
   external_hw:  "VGA connector with RGB222 DAC"      # Describe any external hardware needed
   discord:      "algofoogle"      # Your discord handle, used for communication and automatically assigning tapeout role after a submission
   doc_link:     "https://github.com/algofoogle/tt04-raybox-zero/blob/main/README.md"      # URL to longer form documentation, eg the README.md in your repository
