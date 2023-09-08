@@ -16,6 +16,15 @@ module tt_um_algofoogle_raybox_zero(
   input  wire       rst_n     // reset_n - low to reset
 );
 
+  wire [5:0] rgb;
+  wire vsync_n, hsync_n;
+  reg unregistered_vga_output = {rgb, vsync_n, hsync_n};
+  reg [7:0] registered_vga_output;
+
+  always @(posedge clk) registered_vga_output <= unregistered_vga_output;
+
+  assign uo_out = i_reg ? registered_vga_output : unregistered_vga_output;
+
   rbzero rbzero(
     .clk      (clk),
     .reset    (~rst_n),
@@ -31,12 +40,13 @@ module tt_um_algofoogle_raybox_zero(
     // Since they're just for simple demo purposes, and not typically used, I think they're fine as-is:
     .i_debug  (ui_in[3]),
     .i_inc_px (ui_in[4]),
-    .i_inc_px (ui_in[5]),
+    .i_inc_py (ui_in[5]),
+    .i_reg    (ui_in[6]),
 
     // VGA output signals:
-    .hsync_n  (uo_out[0]),
-    .vsync_n  (uo_out[1]),
-    .rgb      (uo_out[7:2]),
+    .hsync_n  (hsync_n),
+    .vsync_n  (vsync_n),
+    .rgb      (rgb),
 
     // Other outputs:
     .o_hblank (uio_out[0]),

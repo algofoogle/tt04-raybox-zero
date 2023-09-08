@@ -70,6 +70,9 @@ documentation:
       `debug` can be asserted to show current state of POV (point-of-view) registers, which might come in handy
       when trying to debug SPI writes.
 
+      If `reg` input is asserted, VGA outputs are registered. Otherwise, they are just as they come out of internal combo logic.
+      I've done it this way so I can test the difference (if any).
+
       `inc_px` and `inc_py` can be asserted to continuously increment their respective player X/Y position register.
       Normally the registers should be updated via SPI, but this allows someone to at least see a demo in action
       without having to implement the SPI host controller.
@@ -82,7 +85,7 @@ documentation:
     - debug
     - inc_px
     - inc_py
-    - none
+    - reg
     - none
 # A description of what the outputs do (e.g. status LED, SPI MISO, etc)
   outputs:
