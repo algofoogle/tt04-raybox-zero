@@ -77,6 +77,10 @@ documentation:
       Normally the registers should be updated via SPI, but this allows someone to at least see a demo in action
       without having to implement the SPI host controller.
 
+      The "SPI2" ports (`reg_sclk`, etc.) are for access to all other registers that we can play with.
+      I decided to keep these separate because I implemented them very late, and didn't want to break the
+      existing SPI interface for POV register access.
+
 # A description of what the inputs do (e.g. red button, SPI CLK, SPI MOSI, etc).
   inputs:
     - 'SPI in: sclk'
@@ -101,15 +105,15 @@ documentation:
   bidirectional:
     - o_hblank
     - o_vblank
-    - none
-    - none
-    - none
+    - 'SPI2 in: reg_sclk'
+    - 'SPI2 in: reg_mosi'
+    - 'SPI2 in: reg_ss_n'
     - none
     - none
     - none
 
 # The following fields are optional
-  tag:          "vga, demo, game, graphics, retro, 3d"
+  tag:          "vga, demo, game, graphics, retro, 3d, spi"
   external_hw:  "VGA connector with RGB222 DAC"      # Describe any external hardware needed
   discord:      "algofoogle"
   doc_link:     "https://github.com/algofoogle/raybox-zero/blob/main/README.md"
