@@ -50,12 +50,16 @@ documentation:
       There is nothing yet but textured walls, and flat-coloured floor and ceiling. No doors or sprites, sorry.
       Maybe that will come in version 2 (stay tuned for TT05!)
 
-      NOTE: To optimise the design and make it work without a framebuffer, 
-
-      The 'player' view is controlled by SPI, which can be used to write the player position, facing X/Y vector,
-      and viewplane X/Y vector.
+      The 'player' POV ("point of view") is controlled by SPI, which can be used to write the player position,
+      facing X/Y vector, and viewplane X/Y vector in one go.
 
       This design uses 4x2 tiles in the TT04 130nm process. 4 tiles is about 0.16 square millimetres.
+
+      NOTE: To optimise the design and make it work without a framebuffer, this renders what is effectively a
+      portrait view, rotated. A portrait monitor (i.e. one rotated 90 degrees anti-clockwise) will display this
+      like the conventional first-person shooter view, but it could still be used in a conventional landscape
+      orientation if you imagine it is for a game where you have a first-person perspective of a flat 2D
+      platformer, endless runner, "Descent-style" game, whatever.
 
       TBC.
 
@@ -63,12 +67,15 @@ documentation:
   how_to_test:  |
       TBC: Explain how to test your project
 
+      `debug` can be asserted to show current state of POV (point-of-view) registers, which might come in handy
+      when trying to debug SPI writes.
+
 # A description of what the inputs do (e.g. red button, SPI CLK, SPI MOSI, etc).
   inputs:
     - 'SPI in: sclk'
     - 'SPI in: mosi'
     - 'SPI in: ss_n'
-    - none
+    - debug
     - none
     - none
     - none
