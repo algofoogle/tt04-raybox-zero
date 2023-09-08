@@ -60,7 +60,7 @@ documentation:
       The 'player' POV ("point of view") is controlled by SPI, which can be used to write the player position,
       facing X/Y vector, and viewplane X/Y vector in one go.
 
-      This design uses 4x2 tiles in the TT04 130nm process. 4 tiles is about 0.16 square millimetres.
+      This design uses 4x2 tiles in the TT04 130nm process. 4x2 tiles is about 0.16 square millimetres.
 
       NOTE: To optimise the design and make it work without a framebuffer, this renders what is effectively a
       portrait view, rotated. A portrait monitor (i.e. one rotated 90 degrees anti-clockwise) will display this
@@ -125,4 +125,4 @@ documentation:
   discord:      "algofoogle"
   doc_link:     "https://github.com/algofoogle/raybox-zero/blob/main/README.md"
   clock_hz:     25000000       # Clock frequency in Hz (if required). 25.175MHz is ideal, but 25.0MHz is fine.
-  picture:      "doc/raybox-zero.png"
+  picture:      "doc/fpga-vs-sim.jpg"

@@ -6,6 +6,9 @@ This is an attempt to create a design for TT04 that is a very simple ray caster 
 
 For more information, see the main source repo for this project: [algofoogle/raybox-zero]
 
+Here is the design running on an FPGA (sorry about the low-quality old monitor and dithered RGB111 output rather than RGB222) and a comparison with the same design running in a Verilator-based simulator:
+
+![raybox-zero running on FPGA and simulator](./doc/fpga-vs-sim.jpg)
 
 # What is Tiny Tapeout?
 
