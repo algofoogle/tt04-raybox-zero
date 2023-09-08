@@ -16,13 +16,14 @@ module tt_um_algofoogle_raybox_zero(
   input  wire       rst_n     // reset_n - low to reset
 );
 
-  wire [5:0] rgb;
-  wire vsync_n, hsync_n;
-  reg unregistered_vga_output = {rgb, vsync_n, hsync_n};
-  reg [7:0] registered_vga_output;
+  wire [5:0]  rgb;
+  wire        vsync_n, hsync_n;
+  reg         unregistered_vga_output = {rgb, vsync_n, hsync_n};
+  reg [7:0]   registered_vga_output;
 
   always @(posedge clk) registered_vga_output <= unregistered_vga_output;
 
+  wire i_reg = ui_in[6];
   assign uo_out = i_reg ? registered_vga_output : unregistered_vga_output;
 
   rbzero rbzero(
@@ -41,7 +42,6 @@ module tt_um_algofoogle_raybox_zero(
     .i_debug  (ui_in[3]),
     .i_inc_px (ui_in[4]),
     .i_inc_py (ui_in[5]),
-    .i_reg    (ui_in[6]),
 
     // VGA output signals:
     .hsync_n  (hsync_n),
