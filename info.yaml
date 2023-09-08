@@ -45,6 +45,11 @@ documentation:
 
 # Longer description of how the project works. You can use standard markdown format.
   how_it_works: |
+      NOTE: There is so much to be documented yet for this.
+      If my complete doco doesn't make it into the TT04 datasheet, I will aim to keep the latest doco in the
+      [README for the tt04-raybox-zero repo](https://github.com/algofoogle/tt04-raybox-zero). If you
+      are reading this message, you should probably go check that out.
+
       This is a framebuffer-less VGA display generator (i.e. it is 'racing the beam') that produces a simple
       implementation of a "3D"-like ray casting game engine... just the graphics part of it.
       It is inspired by Wolfenstein 3D, using a map that is a grid of wall blocks, with basic texture mapping.
