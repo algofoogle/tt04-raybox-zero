@@ -14,7 +14,7 @@ jobs:
           submodules: recursive
 
       - name: Build GDS
-        uses: TinyTapeout/tt-gds-action@tt04
+        uses: TinyTapeout/tt-gds-action@openlane2
 
   viewer:
     needs: gds
@@ -23,4 +23,4 @@ jobs:
       pages: write      # to deploy to Pages
       id-token: write   # to verify the deployment originates from an appropriate source
     steps:
-      - uses: TinyTapeout/tt-gds-action/viewer@tt04
+      - uses: TinyTapeout/tt-gds-action/viewer@openlane2
