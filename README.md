@@ -2,17 +2,34 @@
 
 # raybox-zero for TT04 (Tiny Tapeout 04)
 
-This is an attempt to create a Verilog HDL design implementing a sort of GPU that is a one-trick pony: It is a very  simple ray caster demo (sort of like Wolf3D rendering) driving a VGA display without a framebuffer (i.e. by 'racing the beam').
+This is an attempt to create a Verilog HDL design implementing a sort of GPU that is a one-trick pony: It is a very simple ray caster demo (sort of like Wolf3D rendering) driving a VGA display without a framebuffer (i.e. by 'racing the beam').
 
-Here is the design running on an FPGA (sorry about the low-quality old monitor and dithered RGB111 output rather than the design's native RGB222) and a comparison with the same design running in a Verilator-based simulator:
+Here is the design running on an FPGA (in this case using dithered RGB111 output rather than the design's native RGB222) and a comparison with the same design running in a Verilator-based simulator:
 
 ![raybox-zero running on FPGA and simulator](./doc/fpga-vs-sim.jpg)
 
-This repo wraps my [algofoogle/raybox-zero] repo ([`src/raybox-zero`](src/raybox-zero/) is the git submodule). Raybox-zero can be run on FPGAs (at least, it has a target included for the Altera Cyclone IV as found on a DE0-Nano board), but the purpose of *this* repo is to target silicon, i.e. to be made into an ASIC as part of the [TT04 shuttle](https://app.tinytapeout.com/shuttles/tt04) of [Tiny Tapeout](https://tinytapeout.com/).
+This repo wraps my [algofoogle/raybox-zero] repo as a submodule in [`src/raybox-zero`](src/raybox-zero/). Raybox-zero can be run on FPGAs (at least, it has a target included for the Altera Cyclone IV as found on a DE0-Nano board), but the purpose of *this* repo is to target silicon, i.e. to be made into an ASIC as part of the [TT04 shuttle](https://app.tinytapeout.com/shuttles/tt04) of [Tiny Tapeout](https://tinytapeout.com/).
 
-For more information, see the [raybox-zero repo][algofoogle/raybox-zero].
+For more information, including running this using software simulation, see the [raybox-zero repo][algofoogle/raybox-zero].
 
 NOTE: It is intended that this design is normally driven by its SPI interface using a host controller of some kind, but for TT04 demo purposes it should display an interesting perspective on reset, and then there are two inputs which can be asserted to continuously increment "player X" and/or Y... a sort of demo mode.
+
+# Features
+
+*   640x480 VGA display at ~60Hz from 25MHz clock (25.175MHz ideal)
+*   Portrait "FPS" orientation
+*   RGB222 digital output with HSYNC and VSYNC
+*   Hard-coded 16x16 grid map.
+*   3 hard-coded wall textures, with "light-side" and "dark-side" variations
+*   SPI interface to set 'POV'.
+*   Debug overlay option for visualising POV register bits
+*   2nd SPI interface ('SPI2') to set floor colour, ceiling colour, or floor 'leak'
+*   'Demo mode' inputs
+*   Registered and unregistered output options
+*   Reset line with meaningful initial state
+*   HBLANK and VBLANK outputs that can be used to drive interrupts
+
+NOTE: SPI/SPI2 register values are double-buffered so they only get loaded and take effect at the very end of the visible frame (i.e. start of VBLANK).
 
 
 # News
