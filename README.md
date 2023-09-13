@@ -96,17 +96,16 @@ Example POV register values:
 
 | Register | Format | Value (binary)   | Value (decimal) |
 |-|-|-:|-:|
-| playerX  | UQ6.9  | `000110.100000000` |  5.5 |
-| playerY  | UQ6.9  | `000100.100000000` |  4.5 |
-| facingX  | SQ2.9  | `    00.000000000` |  0.0 |
-| facingY  | SQ2.9  | `    01.000000000` |  1.0 |
-| vplaneX  | SQ2.9  | `    11.100000000` | -0.5 |
-| vplaneY  | SQ2.9  | `    00.000000000` |  0.0 |
+| playerX  | UQ6.9  | `000110.100000000` |  5.500 |
+| playerY  | UQ6.9  | `001001.101000000` |  9.625 |
+| facingX  | SQ2.9  | `    00.000000000` |  0.000 |
+| facingY  | SQ2.9  | `    01.000000000` |  1.000 |
+| vplaneX  | SQ2.9  | `    11.100000000` | -0.500 |
+| vplaneY  | SQ2.9  | `    00.000000000` |  0.000 |
 
 To "rotate" the view, you can just rotate the `facingX/Y` and `vplaneX/Y` vectors, i.e. apply a simple
-[sin/cos-based vector matrix multiplication](https://lodev.org/cgtutor/raycasting.html#:~:text=like%20zooming%20out%3A-,When%20the%20player%20rotates,-%2C%20the%20camera%20has) to them.
+[sin/cos-based vector matrix multiplication](https://lodev.org/cgtutor/raycasting.html#:~:text=like%20zooming%20out%3A-,When%20the%20player%20rotates,-%2C%20the%20camera%20has).
 Note also that `vplane` can also just be derived from `facing`.
-
 
 
 ## Controlling other registers via SPI2

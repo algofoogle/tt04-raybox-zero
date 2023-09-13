@@ -45,28 +45,27 @@ documentation:
 
 # Longer description of how the project works. You can use standard markdown format.
   how_it_works: |
-      NOTE: This doco might get updated after the TT04 datasheet is made.
-      Check the tt04-raybox-repo's README (https://github.com/algofoogle/tt04-raybox-zero)
-      for the latest info.
+      NOTE: Expect updates after the TT04 datasheet is made.
+      Check tt04-raybox-zero's README (https://github.com/algofoogle/tt04-raybox-zero)
+      for latest info.
 
-      This framebuffer-less VGA display generator is 'racing the beam' to yield a simple
+      This framebuffer-less VGA display generator is 'racing the beam' to yield a simple realtime
       "3D"-like render of a game map using ray casting. It's inspired by Wolf3D and based on
       Lode's Raycasting tutorial (https://lodev.org/cgtutor/raycasting.html). Think of it as
       a primitive 'GPU' using a grid map of wall blocks, with basic texture mapping
       and flat-coloured floor/ceiling. No doors or sprites -- but maybe in TT05?
       In TT04's 130nm process we use 4x2 tiles (~0.16mm&sup2;) at ~48% density.
 
-      Without a framebuffer, rendering/animation can occur at full speed.
-      Registers store the 'POV' (Point of View) used for rendering, and can be set via one
-      of the SPI interfaces (`ss_n`/`sclk`/`mosi`). It's expected that some host controller
-      implements the game/motion logic to calculate the POV, and sends the POV
-      via SPI to the chip. An MCU or low-spec CPU should do. I've been bit-banging
+      Without a framebuffer, rendering/animation occurs at full speed. Registers store the
+      'POV' (Point of View) to render. It's expected that a host controller
+      implements game/motion logic and calculates the POV, then sending it to the chip via SPI
+      (`ss_n`/`sclk`/`mosi`). An MCU or low-spec CPU should do. I've been bit-banging
       SPI with a Raspberry Pi Pico.
 
       At reset the POV registers are set to an angled view of the inbuilt 16x16 grid map.
 
       NOTE: "FPS games" like Wolf3D use a landscape display, i.e. normal desktop monitor
-      orientation. I designed this as a portrait display (rotated 90&deg;) for silicon
+      orientation. I designed this as a portrait display (rotated 90&deg; clockwise) for silicon
       area optimisations that come with rendering by scanline instead of by column. If you don't want
       a sideways monitor, design a game/demo using this different perspective.
       For example, image Mario's 1st-person view of his 2D platform world...
@@ -74,7 +73,7 @@ documentation:
       ### Features
 
       *   640x480 VGA display at ~60Hz from 25MHz clock (25.175MHz ideal)
-      *   Registered and unregistered RGB222 digital outs with H/VSYNC
+      *   Registered and unregistered digital VGA outputs: RGB222 and H/VSYNC
       *   Portrait "FPS" orientation
       *   Hard-coded 16x16 map with 3 textures: light- and dark-side variations
       *   SPI interface to set POV with debug option to see POV register bits
