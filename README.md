@@ -5,7 +5,7 @@
 *   [Overview](#overview)
 *   [Features](#features)
 *   [Quick start](#quick-start)
-*   [Controlling the POV via SPI](#controlling-the-pov-via-spi)
+*   [Write POV via SPI](#write-pov-via-spi)
 
 ## Overview
 
@@ -13,7 +13,7 @@ This is an attempt to create a Verilog HDL design implementing a sort of GPU tha
 
 Here is the design running on an FPGA (in this case using dithered RGB111 output rather than the design's native RGB222) and a comparison with the same design running in a Verilator-based simulator:
 
-![raybox-zero running on FPGA and simulator](./doc/fpga-vs-sim.jpg)
+![raybox-zero running on FPGA and simulator](./doc/fpga-vs-sim-V2.jpg)
 
 The scene is rendered using a grid map of wall blocks, with basic texture mapping, and flat-coloured floor and ceiling. No doors or sprites in this version -- but maybe in TT05? In the TT04 130nm process this uses 4x2 tiles (about 0.16 square millimetres) at ~48% utilisation.
 
@@ -62,11 +62,11 @@ screen is just grey and the other half is flickering different colours -- this j
 through the middle of a wall block.
 
 
-## Controlling the POV via SPI
+## Write POV via SPI
 
 Upon reset, the POV (Point of View) registers used for rendering are set to display an angled view of the design's small 16x16 grid map world. Because no framebuffer is used, rendering/animation can occur at the full frame rate. The most important thing you'd want to control is the POV.
 
-The registers that store the POV can be updated anytime using the main SPI interface (`ss_n`, `sclk`, `mosi`). NOTE: SPI register values are double-buffered so they only get loaded and take effect at the very end of the visible frame (i.e. start of VBLANK). That means you can update them early, or multiple times per frame, or be in the process of updating them, and there will be no disruption of the current frame rendering; the next frame that gets rendered will only use whatever valid POV last had a completed write.
+The registers that store the POV can be updated anytime using the main SPI interface (`ss_n`, `sclk`, `mosi`). NOTE: SPI register values are double-buffered so they only get loaded and take effect at the very end of the visible frame (i.e. start of VBLANK). That means you can update them early, or multiple times per frame, or be in the process of updating them, and there will be no disruption of the current frame rendering; the next frame that gets rendered will only use whatever valid POV last had a completed write. It was designed this way so that you don't *have* to time anything... just write via this SPI interface anytime you want, as slowly as you want (or as quickly, up to probably 5MHz max).
 
 The expectation is that some host controller decides what the POV should be (i.e. it implements the game/motion logic), and sends the POV via SPI to the chip. An MCU or low-spec CPU should be up to the task, but I've been bit-banging SPI with a Raspberry Pi Pico during testing.
 
@@ -102,6 +102,11 @@ Example POV register values:
 | facingY  | SQ2.9  | `    01.000000000` |  1.0 |
 | vplaneX  | SQ2.9  | `    11.100000000` | -0.5 |
 | vplaneY  | SQ2.9  | `    00.000000000` |  0.0 |
+
+To "rotate" the view, you can just rotate the `facingX/Y` and `vplaneX/Y` vectors, i.e. apply a simple
+[sin/cos-based vector matrix multiplication](https://lodev.org/cgtutor/raycasting.html#:~:text=like%20zooming%20out%3A-,When%20the%20player%20rotates,-%2C%20the%20camera%20has) to them.
+Note also that `vplane` can also just be derived from `facing`.
+
 
 
 ## Controlling other registers via SPI2
