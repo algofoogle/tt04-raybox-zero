@@ -28,10 +28,12 @@ VERILOG_SOURCES += \
 	$(PWD)/raybox-zero/src/rtl/rbzero.v				\
 	$(PWD)/top.v
 
-COMPILE_ARGS += -I $(PWD)/raybox-zero/src/rtl
+#NOTE: For some reason, this directive doesn't seem to get included in 
+# VERILOG_INCLUDE_DIRS += \
+# 	$(PWD)/raybox-zero/src/rtl
 
-VERILOG_INCLUDE_DIRS += \
-	$(PWD)/raybox-zero/src/rtl
+# This makes up for VERILOG_INCLUDE_DIRS not working, above.
+COMPILE_ARGS += -I $(PWD)/raybox-zero/src/rtl
 
 # TOPLEVEL is the name of the toplevel (testbench) module in your Verilog (typically test/tb.v file):
 TOPLEVEL = tb
@@ -45,9 +47,6 @@ MODULE = test
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
-
-anton:
-	echo $(VERILOG_INCLUDE_DIRS)
 
 show:
 	gtkwave tb.vcd utils/tb.gtkw utils/gtkwave.ini

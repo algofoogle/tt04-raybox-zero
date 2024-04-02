@@ -1,8 +1,8 @@
-name: wokwi_test
+name: test
 # either manually started, or on a schedule
 on: [ push, workflow_dispatch ]
 jobs:
-  wokwi_test:
+  test:
     # ubuntu
     runs-on: ubuntu-latest
     steps:
@@ -24,12 +24,13 @@ jobs:
         cocotb-config --libpython
         cocotb-config --python-bin
 
-    - name: checkout tt tools repo
-      uses: actions/checkout@v3
-      with:
-        repository: tinytapeout/tt-support-tools
-        path: tt
-        ref: tt03p5
+    #NOTE: I don't think this is needed because I'm not using tt_tool.py:
+    # - name: checkout tt tools repo
+    #   uses: actions/checkout@v3
+    #   with:
+    #     repository: tinytapeout/tt-support-tools
+    #     path: tt
+    #     ref: tt03p5
 
     # need python and requirements
     - name: setup python
@@ -38,19 +39,17 @@ jobs:
         python-version: '3.10'
     - run: pip install -r tt/requirements.txt
 
-    # fetch the truth table
-    - name: fetch Verilog and build config
-      run: ./tt/tt_tool.py --create-user-config
-
-    # does the wokwi project have a truthtable?
-    - name: Check the truthtable exists
-      id: check_files
-      uses: andstor/file-existence-action@v2
-      with:
-        files: "src/truthtable.md"
+    # # fetch the truth table
+    # - name: fetch Verilog and build config
+    #   run: ./tt/tt_tool.py --create-user-config
+    # # does the wokwi project have a truthtable?
+    # - name: Check the truthtable exists
+    #   id: check_files
+    #   uses: andstor/file-existence-action@v2
+    #   with:
+    #     files: "src/truthtable.md"
 
     - name: test
-      if: steps.check_files.outputs.files_exists == 'true'
       run: |
         cd src
         make clean
@@ -62,6 +61,12 @@ jobs:
       if: success() || failure()
       uses: actions/upload-artifact@v3
       with:
-          name: test-vcd
-          path: src/*.vcd
+        name: test-vcd
+        path: src/*.vcd
 
+    - name: upload frames
+      if: success() || failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-frames
+        path: src/*.ppm
