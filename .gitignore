@@ -13,3 +13,7 @@ stats.md
 stats-*.md
 *.backup
 JUNK
+*.ppm
+gds_render.svg
+tt/
+__pycache__
