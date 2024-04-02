@@ -87,7 +87,7 @@ async def test_frames(dut):
     Generate first video frame and write it to rbz_basic_frames.ppm
     """
 
-    dut._log.info("Starting test_frame0...")
+    dut._log.info("Starting test_frames...")
 
     frame_count = 4 # No. of frames to render in the one output image.
     hrange = 800

@@ -10,6 +10,9 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 
+ifneq ($(GATES),yes)
+# --- Regular RTL tests ---
+
 VERILOG_SOURCES += \
 	$(PWD)/test/tb.v \
 	$(PWD)/raybox-zero/src/rtl/fixed_point_params.v	\
@@ -34,6 +37,24 @@ VERILOG_SOURCES += \
 
 # This makes up for VERILOG_INCLUDE_DIRS not working, above.
 COMPILE_ARGS += -I $(PWD)/raybox-zero/src/rtl
+
+else
+# --- GL (Gate-level) tests ---
+
+COMPILE_ARGS    += -DGL_TEST
+COMPILE_ARGS    += -DFUNCTIONAL
+COMPILE_ARGS    += -DUSE_POWER_PINS
+COMPILE_ARGS    += -DSIM
+COMPILE_ARGS    += -DUNIT_DELAY=\#1
+VERILOG_SOURCES += $(PDK_ROOT)/sky130A/libs.ref/sky130_fd_sc_hd/verilog/primitives.v
+VERILOG_SOURCES += $(PDK_ROOT)/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v
+VERILOG_SOURCES += $(PWD)/test/tb.v
+# This gets copied in by the GDS action workflow, or otherwise do:
+# cd src && cp ../runs/wokwi/results/final/verilog/gl/tt_um_algofoogle_raybox_zero.v test/gate_level_netlist.v
+VERILOG_SOURCES += $(PWD)/test/gate_level_netlist.v
+
+endif
+
 
 # TOPLEVEL is the name of the toplevel (testbench) module in your Verilog (typically test/tb.v file):
 TOPLEVEL = tb
