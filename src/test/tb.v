@@ -3,10 +3,10 @@
 
 module tb;
 
-    initial begin
-        $dumpfile("tb.vcd");
-        $dumpvars(0, tb);
-    end
+    // initial begin
+    //     $dumpfile("tb.vcd");
+    //     $dumpvars(0, tb);
+    // end
 
     // --- Named inputs controlled by test: ---
     // Universal TT04 inputs:
