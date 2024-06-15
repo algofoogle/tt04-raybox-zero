@@ -15,5 +15,8 @@ stats-*.md
 JUNK
 *.ppm
 gds_render.svg
+gds_render_png24.png
 tt/
 __pycache__
+*~
+.*~

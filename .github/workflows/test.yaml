@@ -16,13 +16,15 @@ jobs:
     - name: install oss-cad-suite
       uses: YosysHQ/setup-oss-cad-suite@v2
       with:
-          python-override: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+        version: '2023-09-11'
+        python-override: true
+        github-token: ${{ secrets.GITHUB_TOKEN }}
     - run: | 
         yosys --version
         iverilog -V
         cocotb-config --libpython
         cocotb-config --python-bin
+        cocotb-config --version
 
     #NOTE: I don't think this is needed because I'm not using tt_tool.py:
     # - name: checkout tt tools repo
@@ -37,6 +39,9 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
+    - run: |
+        pip install -r requirements.txt
+        cocotb-config --version
     # - run: pip install -r tt/requirements.txt
 
     # # fetch the truth table
