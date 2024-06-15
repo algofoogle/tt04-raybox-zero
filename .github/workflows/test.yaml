@@ -16,7 +16,7 @@ jobs:
     - name: install oss-cad-suite
       uses: YosysHQ/setup-oss-cad-suite@v2
       with:
-        version: '2023-08-01'
+        version: '2023-05-01'
         python-override: true
         github-token: ${{ secrets.GITHUB_TOKEN }}
     - run: | 
@@ -26,6 +26,8 @@ jobs:
         cocotb-config --python-bin
         cocotb-config --version
         lsb_release -a
+        ldd --version
+        dpkg -l
 
     #NOTE: I don't think this is needed because I'm not using tt_tool.py:
     # - name: checkout tt tools repo

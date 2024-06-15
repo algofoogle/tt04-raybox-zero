@@ -1,0 +1,53 @@
+name: test
+# either manually started, or on a schedule
+on: [ push, workflow_dispatch ]
+jobs:
+  test:
+    # ubuntu
+    runs-on: ubuntu-latest
+    steps:
+    # need the repo checked out
+    - name: checkout repo
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install iverilog
+      shell: bash
+      run: |
+        sudo apt-get update && sudo apt-get install -y iverilog
+        iverilog -V
+
+
+    # Set up python and install cocotb
+    - name: setup python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    - run: |
+        pip install -r requirements.txt
+        cocotb-config --libpython
+        cocotb-config --python-bin
+        cocotb-config --version
+
+    - name: test
+      run: |
+        cd src
+        make clean
+        make FRAMES=60
+        # make will return success even if the test fails, so check for failure in the results.xml
+        ! grep failure results.xml
+
+    - name: upload vcd
+      if: success() || failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-vcd
+        path: src/*.vcd
+
+    - name: upload frames
+      if: success() || failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-frames
+        path: src/*.ppm

@@ -2,9 +2,11 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, Timer, ClockCycles
 import time
+from os import environ as env
 
-CLOCK_PERIOD = 40.0 # ns
-HIGH_RES = None #10.0 # If not None, scale H res by this, and step by CLOCK_PERIOD/HIGH_RES instead of unit clock cycles.
+HIGH_RES        = float(env.get('HIGH_RES')) if 'HIGH_RES' in env else None # If not None, scale H res by this, and step by CLOCK_PERIOD/HIGH_RES instead of unit clock cycles.
+CLOCK_PERIOD    = float(env.get('CLOCK_PERIOD') or 40.0) # Default 40.0 (period of clk oscillator input, in nanoseconds)
+FRAMES          =   int(env.get('FRAMES')       or   10) # Default 3 (total frames to render)
 
 
 # Make sure all bidir pins are configured as outputs
@@ -31,56 +33,6 @@ def set_default_start_state(dut):
     # Present UNregistered outputs:
     dut.registered_outputs.value = 0
 
-# @cocotb.test()
-# async def test_basic_waveform_dump(dut):
-#     """
-#     Just start a clock, apply reset, and let the design free-run for 500,000 cycles;
-#     enough to generate at least 1 full VGA frame and dump to VCD
-#     """
-
-#     dut._log.info("Starting test_basic_waveform_dump...")
-
-#     set_default_start_state(dut)
-#     # Start with reset released:
-#     dut.rst_n.value = 1
-
-#     # 40ns clock (25MHz):
-#     clock = Clock(dut.clk, CLOCK_PERIOD, units='ns').start()
-#     cocotb.start_soon(clock)
-
-#     # Wait 3 clocks...
-#     await ClockCycles(dut.clk, 3)
-#     check_uio_out(dut)
-#     dut._log.info("Assert reset...")
-#     # ...then assert reset:
-#     dut.rst_n.value = 0
-#     # ...and wait another 3 clocks...
-#     await ClockCycles(dut.clk, 3)
-#     check_uio_out(dut)
-#     dut._log.info("Release reset...")
-#     # ...then release reset:
-#     dut.rst_n.value = 1
-
-#     # Run the design for 1 line...
-#     dut._log.info("Line #0...")
-#     await ClockCycles(dut.clk, 800)
-#     check_uio_out(dut)
-
-#     # ...and another 10 lines...
-#     dut._log.info("Lines #1..10...")
-#     await ClockCycles(dut.clk, 10*800)
-#     check_uio_out(dut)
-
-#     # ...then the rest of the frame (525-11 lines)...
-#     dut._log.info("Lines #11..524...")
-#     await ClockCycles(dut.clk, 514*800)
-#     check_uio_out(dut)
-
-#     # ...and then a few more of the next frame, to total 500,000 cycles since we came out of reset:
-#     dut._log.info("100 more lines...")
-#     await ClockCycles(dut.clk, 100*800)
-#     check_uio_out(dut)
-#     dut._log.info("Test finished")
 
 @cocotb.test()
 async def test_frames(dut):
@@ -90,7 +42,7 @@ async def test_frames(dut):
 
     dut._log.info("Starting test_frames...")
 
-    frame_count = 560 # No. of frames to render.
+    frame_count = FRAMES # No. of frames to render.
     hrange = 800
     frame_height = 525
     #vrange = frame_height*frame_count #NOTE: Can multiply this by number of frames desired.
