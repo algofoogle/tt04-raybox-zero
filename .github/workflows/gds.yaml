@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -36,12 +36,13 @@ jobs:
     
       - name: GL test
         env:
-          FRAMES: 5 # Don't do all 10 frames; it'll take too long via GL
+          FRAMES: 5     # Don't do all 10 frames; it'll take too long via GL
+          LINE_MOD: 25  # Only report line rendering status every 25 lines
         uses: TinyTapeout/tt-gds-action/gl_test@tt04
 
       - name: upload frames
         if: success() || failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-frames-gl
           path: src/*.ppm
