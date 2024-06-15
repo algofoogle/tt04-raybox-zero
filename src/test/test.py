@@ -28,8 +28,8 @@ def set_default_start_state(dut):
     # Enable debug display on-screen:
     dut.debug.value = 1
     # Enable demo mode (player position auto-increment):
-    dut.inc_px.value = 0 #1
-    dut.inc_py.value = 1 # tnt's better video sample only has PY incrementing.
+    dut.inc_px.value = 1
+    dut.inc_py.value = 1
     # Present UNregistered outputs:
     dut.registered_outputs.value = 0
 
@@ -48,8 +48,6 @@ async def test_frames(dut):
     #vrange = frame_height*frame_count #NOTE: Can multiply this by number of frames desired.
     vrange = frame_height
     hres = HIGH_RES or 1
-
-    print("Rendering first full frame...")
 
     set_default_start_state(dut)
     # Start with reset released:
@@ -71,6 +69,8 @@ async def test_frames(dut):
     # ...then release reset:
     dut.rst_n.value = 1
 
+    dut._log.info("Starting frame rendering loop...")
+
     for frame in range(frame_count):
         render_start_time = time.time()
         # Create PPM file to visualise the frame, and write its header:
@@ -79,9 +79,14 @@ async def test_frames(dut):
         img.write(f"{int(hrange*hres)} {vrange:d}\n")
         img.write("255\n")
 
+        dut._log.info(f"Starting frame {frame+1} of {frame_count}...")
+
         for n in range(vrange): # 525 lines * however many frames in frame_count
             if (n % LINE_MOD) == 0:
-                print(f"Rendering line {n} of frame {frame}")
+                print()
+                dut._log.info(f"Rendering line {n+1} of frame {frame+1} of {frame_count}")
+            else:
+                print('.', end='')
             for n in range(int(hrange*hres)): # 800 pixel clocks per line.
                 # if n % 100 == 0:
                 #     print('.', end='')
@@ -107,7 +112,7 @@ async def test_frames(dut):
         img.close()
         render_stop_time = time.time()
         delta = render_stop_time - render_start_time
-        print(f"[{render_stop_time}: Frame simulated in #{delta} seconds]")
-    print("Waiting 1 more clock, for start of next line...")
+        dut._log.info(f"[{render_stop_time}: Frame simulated in {delta:.2f} seconds]")
+    dut._log.info("Waiting 1 more clock, for start of next line...")
     await ClockCycles(dut.clk, 1)
-    print("DONE")
+    dut._log.info("DONE")
