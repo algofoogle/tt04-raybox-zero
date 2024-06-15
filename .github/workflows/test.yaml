@@ -8,60 +8,32 @@ jobs:
     steps:
     # need the repo checked out
     - name: checkout repo
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
 
-    # install oss fpga tools
-    - name: install oss-cad-suite
-      uses: YosysHQ/setup-oss-cad-suite@v2
-      with:
-        version: '2023-05-01'
-        python-override: true
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-    - run: | 
-        yosys --version
+    - name: Install iverilog
+      shell: bash
+      run: |
+        sudo apt-get update && sudo apt-get install -y iverilog
         iverilog -V
-        cocotb-config --libpython
-        cocotb-config --python-bin
-        cocotb-config --version
-        lsb_release -a
-        ldd --version
-        dpkg -l
 
-    #NOTE: I don't think this is needed because I'm not using tt_tool.py:
-    # - name: checkout tt tools repo
-    #   uses: actions/checkout@v3
-    #   with:
-    #     repository: tinytapeout/tt-support-tools
-    #     path: tt
-    #     ref: tt03p5
-
-    # need python and requirements
+    # Set up python and install cocotb
     - name: setup python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
     - run: |
         pip install -r requirements.txt
+        cocotb-config --libpython
+        cocotb-config --python-bin
         cocotb-config --version
-    # - run: pip install -r tt/requirements.txt
-
-    # # fetch the truth table
-    # - name: fetch Verilog and build config
-    #   run: ./tt/tt_tool.py --create-user-config
-    # # does the wokwi project have a truthtable?
-    # - name: Check the truthtable exists
-    #   id: check_files
-    #   uses: andstor/file-existence-action@v2
-    #   with:
-    #     files: "src/truthtable.md"
 
     - name: test
       run: |
         cd src
         make clean
-        make
+        make FRAMES=10 LINE_MOD=25
         # make will return success even if the test fails, so check for failure in the results.xml
         ! grep failure results.xml
 

@@ -7,7 +7,7 @@ from os import environ as env
 HIGH_RES        = float(env.get('HIGH_RES')) if 'HIGH_RES' in env else None # If not None, scale H res by this, and step by CLOCK_PERIOD/HIGH_RES instead of unit clock cycles.
 CLOCK_PERIOD    = float(env.get('CLOCK_PERIOD') or 40.0) # Default 40.0 (period of clk oscillator input, in nanoseconds)
 FRAMES          =   int(env.get('FRAMES')       or   10) # Default 3 (total frames to render)
-
+LINE_MOD        =   int(env.get('LINE_MOD')     or    1) # Default 1 (how often to report current line number: every N lines)
 
 # Make sure all bidir pins are configured as outputs
 # (as they should always be, for this design):
@@ -80,10 +80,11 @@ async def test_frames(dut):
         img.write("255\n")
 
         for n in range(vrange): # 525 lines * however many frames in frame_count
-            print(f"Rendering line {n} of frame {frame}")
+            if (n % LINE_MOD) == 0:
+                print(f"Rendering line {n} of frame {frame}")
             for n in range(int(hrange*hres)): # 800 pixel clocks per line.
-                if n % 100 == 0:
-                    print('.', end='')
+                # if n % 100 == 0:
+                #     print('.', end='')
                 if 'x' in dut.rgb.value.binstr:
                     # Output is unknown; make it green:
                     r = 0
