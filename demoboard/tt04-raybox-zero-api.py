@@ -1,44 +1,46 @@
 import time
-from machine import Pin
+from machine import Pin, SoftSPI
 import math
 
-class SPI:
-    def __init__(self, tt, interface, sleep_time_ms=1):
-        self.sleep_time = sleep_time_ms
+# Raybox-Zero SPI interface:
+class RBZSPI:
+    SPI_BAUD = 500_000 # 500kHz is max supported by MicroPython on RP2040
+    def __init__(self, tt, interface):
         self.tt = tt
         self.interface = interface
         if interface == 'pov':
-            self.sclk   = tt.in0
-            self.mosi   = tt.in1
-            self.csb    = tt.in2
+            self.csb = tt.in2
+            self.spi = SoftSPI(
+                RBZSPI.SPI_BAUD, polarity=0, bits=8, firstbit=machine.SPI.MSB,
+                sck     = tt.in0.raw_pin,
+                mosi    = tt.in1.raw_pin,
+                miso    = tt.uio5.raw_pin # DUMMY: Not used; this SPI doesn't output data.
+            )
         elif interface == 'reg':
-            self.sclk   = tt.uio2; self.sclk.mode = Pin.OUT
-            self.mosi   = tt.uio3; self.mosi.mode = Pin.OUT
-            self.csb    = tt.uio4; self.csb.mode  = Pin.OUT
+            # Configure this interface's UIOs as outputs:
+            for p in [tt.uio2, tt.uio3, tt.uio4]: p.mode = Pin.OUT
+            self.csb = tt.uio4
+            self.spi = SoftSPI(
+                RBZSPI.SPI_BAUD, polarity=0, bits=8, firstbit=machine.SPI.MSB,
+                sck     = tt.uio2.raw_pin,
+                mosi    = tt.uio3.raw_pin,
+                miso    = tt.uio5.raw_pin # DUMMY: Not used; this SPI doesn't output data.
+            )
         else:
             raise ValueError(f"Invalid interface {repr(interface)}; must be 'pov' or 'reg'")
-    def __repr__(self):
-        return f'SPI({self.interface})'
+        
+    def __repr__(self): return f'RBZSPI({self.interface})'
+
     def enable(self):   self.csb(False)
     def disable(self):  self.csb(True)
-    def sclk(self, v):  self.sclk(int(v))
-    def mosi(self, v):  self.mosi(int(v))
-    def sleep(self):    
-        if self.sleep_time > 0:
-            time.sleep_ms(self.sleep_time)
-    # Pulse SCLK:
-    def load(self):
-        self.sleep(); self.sclk(1)
-        self.sleep(); self.sclk(0)
-    def send_bit(self, bit):
-        self.mosi(int(bit))
-        self.load()
+
     def txn_start(self):
-        self.disable() # Inactive at start.
-        self.sclk(0)
-        self.sleep()
+        self.disable() # Inactive at start; ensures SPI is reset.
         self.enable()
-    def txn_send(self, data, count=None):
+
+    def txn_stop(self): self.disable()
+
+    def to_bin(self, data, count=None):
         if type(data) is int:
             data = bin(data)
             data = data[2:]
@@ -46,38 +48,47 @@ class SPI:
                 print(f"WARNING: SPI.send_bits() called with int data {data} but no count")
         if count is not None:
             data = ('0'*count + data)[-count:] # Zero-pad up to the required count.
-        while len(data) > 0:
-            self.send_bit(data[0])
-            data = data[1:]
-    def txn_stop(self):
-        self.sleep()
-        # Deactivate; we're done:
-        self.disable()
-        self.sclk(0)
-        self.sleep()
-    def send_payload(self, data, count=None):
-        self.txn_start()
-        if type(data) is list:
-            # Caller wants to send multiple chunks in the one transaction
-            # (e.g. packed data):
-            for chunk in data:
-                if type(chunk) is tuple:
-                    # Tuple means we have both data,
-                    # and the count of bits to transmit for that data:
-                    self.txn_send(chunk[0], chunk[1])
-                else:
-                    # Not a tuple, so hopefully it's a finite string of bits:
-                    self.txn_send(chunk)
-        else:
-            # Just send an explicit value (of a given optional 'count' size):
-            self.txn_send(data, count)
-        self.txn_stop()
+        return data
 
-class POV(SPI):
-    def __init__(self, sleep_time_ms=1):
-        super().__init__(tt, 'pov', sleep_time_ms)
-    def set_raw_pov(self, pov):
-        self.send_payload(pov, 74)
+    def send_payload(self, data, count=None):
+        start_time = time.ticks_us()
+        self.txn_start()
+        if type(data) is bytearray:
+            self.spi.write(data)
+        else:
+            # Build up a binary string:
+            bin = ''
+            if type(data) is list:
+                # Caller wants to concatenate multiple chunks in the one transaction
+                # (e.g. packed data):
+                for chunk in data:
+                    if type(chunk) is tuple:
+                        # Tuple means we have both data,
+                        # and the count of bits to transmit for that data:
+                        bin += self.to_bin(chunk[0], chunk[1])
+                    else:
+                        # Not a tuple, so hopefully it's a finite string of bits:
+                        bin += self.to_bin(chunk)
+            else:
+                # Just send an explicit value (of a given optional 'count' size):
+                bin += self.to_bin(data, count)
+            # Most raybox-zero SPI payloads are not an even multiple of 8 bits,
+            # but this is SoftSPI needs to send whole bytes.
+            # Thankfully raybox-zero SPI interfaces discard extra bits,
+            # so we now RIGHT-pad the binary string to a multiple of 8:
+            bin += '0' * (-len(bin) % 8)
+            # Convert this binary string to a bytearray and send it:
+            self.spi.write( int(bin,2).to_bytes(len(bin)//8, 'bin') )
+        self.txn_stop()
+        stop_time = time.ticks_us()
+        diff = time.ticks_diff(stop_time, start_time)
+        print(f"SPI transmit time: {diff} us")
+
+class POV(RBZSPI):
+    def __init__(self):         super().__init__(tt, 'pov')
+
+    def set_raw_pov(self, pov): self.send_payload(pov, 74)
+
     def set_raw_pov_chunks(self, px, py, fx, fy, vx, vy):
         self.send_payload([
             (px, 15),   # playerX: UQ6.9
@@ -87,6 +98,7 @@ class POV(SPI):
             (vx, 11),   # vplaneX: SQ2.9
             (vy, 11)    # vplaneY: SQ2.9
         ])
+
     def float_to_fixed(self, f, q: str = 'Q12.12') -> int:
         if q == 'Q12.12':
             #SMELL: Hard-coded to assume Q12.12 for now, where MSB is sign bit.
@@ -100,6 +112,7 @@ class POV(SPI):
             return t & 0x000007FF # 11 bits.
         else:
             raise Exception(f"Unsupported fixed-point format: {q}")
+
     def pov(self, px, py, fx, fy, vx, vy):
         self.set_raw_pov_chunks(
             self.float_to_fixed(px, 'UQ6.9'), self.float_to_fixed(py, 'UQ6.9'),
@@ -107,7 +120,8 @@ class POV(SPI):
             self.float_to_fixed(vx, 'SQ2.9'), self.float_to_fixed(vy, 'SQ2.9')
         )
 
-class REG(SPI):
+
+class REG(RBZSPI):
     # Register names and sizes per https://github.com/algofoogle/raybox-zero/blob/922aa8e901d1d3e54e35c5253b0a44d7b32f681f/src/rtl/spi_registers.v#L77
     CMD_SKY    = 0;  LEN_SKY    =  6
     CMD_FLOOR  = 1;  LEN_FLOOR  =  6
@@ -120,8 +134,9 @@ class REG(SPI):
     CMD_TEXADD1= 8;  LEN_TEXADD1= 24
     CMD_TEXADD2= 9;  LEN_TEXADD2= 24
     CMD_TEXADD3=10;  LEN_TEXADD3= 24
-    def __init__(self, sleep_time_ms=1):
-        super().__init__(tt, 'reg', sleep_time_ms)
+
+    def __init__(self):         super().__init__(tt, 'reg')
+
     def sky     (self, color):  self.send_payload([ (self.CMD_SKY,      4), (color, self.LEN_SKY     ) ])    # Set sky colour (6b data)
     def floor   (self, color):  self.send_payload([ (self.CMD_FLOOR,    4), (color, self.LEN_FLOOR   ) ])    # Set floor colour (6b data)
     def leak    (self, texels): self.send_payload([ (self.CMD_LEAK,     4), (texels,self.LEN_LEAK    ) ])    # Set floor 'leak' (in texels; 6b data)
@@ -143,8 +158,8 @@ class REG(SPI):
             (addend, self.LEN_TEXTADD0)
         ])
 
-pov = POV(0)
-reg = REG(0)
+pov = POV()
+reg = REG()
 
 # These are the POVs I originally sent to Sylvain (@tnt) here:
 # https://discord.com/channels/1009193568256135208/1222582697596162220/1224328766025891840
@@ -171,7 +186,24 @@ demo_povs = [
 while True:
     for view in demo_povs:
         time.sleep_ms(1000)
+        start_time = time.ticks_us()
         pov.pov(*view)
+        stop_time = time.ticks_us()
+        diff = time.ticks_diff(stop_time, start_time)
+        print(f"Total update time: {diff} us")
+
+# n = 0.5
+# d = 1
+# v = demo_povs[3]
+# while True:
+#     v[5] = n
+#     v[2] = n
+#     n += 0.01*d
+#     if n > 1.8:
+#         d = -1
+#     if n < -1.8:
+#         d = 1
+#     pov.pov(*v)
 
 # theta = 0.0
 # view = demo_povs[1]
@@ -182,3 +214,4 @@ while True:
 #     pov.pov(*view)
 #     theta += 0.01
 #     if theta > 2.0*math.pi: theta -= 2.0*math.pi
+
