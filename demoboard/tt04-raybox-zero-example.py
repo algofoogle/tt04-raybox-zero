@@ -1,6 +1,5 @@
 import time
 from machine import Pin, SoftSPI
-import math
 
 # Raybox-Zero SPI interface:
 class RBZSPI:
@@ -11,7 +10,7 @@ class RBZSPI:
         if interface == 'pov':
             self.csb = tt.in2
             self.spi = SoftSPI(
-                RBZSPI.SPI_BAUD, polarity=0, bits=8, firstbit=machine.SPI.MSB,
+                RBZSPI.SPI_BAUD,
                 sck     = tt.in0.raw_pin,
                 mosi    = tt.in1.raw_pin,
                 miso    = tt.uio5.raw_pin # DUMMY: Not used; this SPI doesn't output data.
@@ -21,7 +20,7 @@ class RBZSPI:
             for p in [tt.uio2, tt.uio3, tt.uio4]: p.mode = Pin.OUT
             self.csb = tt.uio4
             self.spi = SoftSPI(
-                RBZSPI.SPI_BAUD, polarity=0, bits=8, firstbit=machine.SPI.MSB,
+                RBZSPI.SPI_BAUD,
                 sck     = tt.uio2.raw_pin,
                 mosi    = tt.uio3.raw_pin,
                 miso    = tt.uio5.raw_pin # DUMMY: Not used; this SPI doesn't output data.
@@ -53,14 +52,17 @@ class RBZSPI:
     def send_payload(self, data, count=None):
         start_time = time.ticks_us()
         self.txn_start()
-        if type(data) is bytearray:
+        if type(data) is bytearray or type(data) is bytes:
             self.spi.write(data)
         else:
             # Build up a binary string:
-            bin = ''
-            if type(data) is list:
+            if type(data) is not list:
+                # Just send an explicit value (of a given optional 'count' size):
+                bin = self.to_bin(data, count)
+            else:
                 # Caller wants to concatenate multiple chunks in the one transaction
                 # (e.g. packed data):
+                bin = ''
                 for chunk in data:
                     if type(chunk) is tuple:
                         # Tuple means we have both data,
@@ -69,11 +71,8 @@ class RBZSPI:
                     else:
                         # Not a tuple, so hopefully it's a finite string of bits:
                         bin += self.to_bin(chunk)
-            else:
-                # Just send an explicit value (of a given optional 'count' size):
-                bin += self.to_bin(data, count)
-            # Most raybox-zero SPI payloads are not an even multiple of 8 bits,
-            # but this is SoftSPI needs to send whole bytes.
+            # Most raybox-zero SPI payloads are not a multiple of 8 bits,
+            # but this SoftSPI needs to send whole bytes.
             # Thankfully raybox-zero SPI interfaces discard extra bits,
             # so we now RIGHT-pad the binary string to a multiple of 8:
             bin += '0' * (-len(bin) % 8)
@@ -155,7 +154,7 @@ class REG(RBZSPI):
     def texadd  (self, index, addend):
         self.send_payload([
             (self.CMD_TEXADD0+index,4),
-            (addend, self.LEN_TEXTADD0)
+            (addend, self.LEN_TEXADD0)
         ])
 
 pov = POV()
@@ -166,9 +165,9 @@ reg = REG()
 
 demo_povs = [
     # Mix of walls:
-    [   13.107422,  7.855469,
-         0.119141, -0.992188,
-         0.496094,  0.058594    ],
+    [   13.107422,  7.855469,       # Player position
+         0.119141, -0.992188,       # Normalized facing direction vector
+         0.496094,  0.058594    ],  # Viewplane vector; prependicular to, and typically half of, the facing direction
     # Directly facing a corner:
     [   11.517578,  3.552734,
         -0.689453, -0.722656,
@@ -191,27 +190,3 @@ while True:
         stop_time = time.ticks_us()
         diff = time.ticks_diff(stop_time, start_time)
         print(f"Total update time: {diff} us")
-
-# n = 0.5
-# d = 1
-# v = demo_povs[3]
-# while True:
-#     v[5] = n
-#     v[2] = n
-#     n += 0.01*d
-#     if n > 1.8:
-#         d = -1
-#     if n < -1.8:
-#         d = 1
-#     pov.pov(*v)
-
-# theta = 0.0
-# view = demo_povs[1]
-# while True:
-#     # time.sleep_ms(16)
-#     view[0] = math.sin(theta)*6.0 + 16.0
-#     view[1] = math.cos(theta)*6.0 + 16.0
-#     pov.pov(*view)
-#     theta += 0.01
-#     if theta > 2.0*math.pi: theta -= 2.0*math.pi
-
