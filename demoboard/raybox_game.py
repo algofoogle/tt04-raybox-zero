@@ -22,7 +22,10 @@ from raybox_controller import RayboxZeroController
 #         - CTRL: x2 
 #         - SHIFT: x4
 #         - ALT: x8
-#     Must hold any of the following on main number row to apply the mousewheel action:
+#     With no other key held, mousewheel scales the 'facing' vector, which basically
+#     has the effect of adjusting "FOV", otherwise described as telephoto/wide-angle zooming.
+#
+#     You can also hold any of the following on main number row to apply the mousewheel action:
 #         - 7: leak
 
 # Other:
@@ -39,7 +42,7 @@ RBZ_MAP_ROWS        = 16
 RBZ_MAP_SCALE       = 32.0  # Controls how big our map preview is.
 PLAYER_SIZE         = 0.55  # min=0.28 (less will expose overflows). 0.6875 is same as Wolf3D? 0.55 fees 'right'
 ROTATE_MOUSE        = False # If True, use mouse Y (up/down) instead of X.
-FLIPPED             = False # True  # If True, assume monitor is rotated clockwise rather than CCW.
+FLIPPED             = True  # If True, assume monitor is rotated clockwise rather than CCW.
 
 # This is the size of the game map window that we display on the PC:
 SCREEN_W            = 900
@@ -116,15 +119,28 @@ sum_deltas      = 0     # Used to produce an average of time deltas.
 
 # This holds the state of the game environment:
 class RBZMap:
+    FLASH_STEPS = [
+        #  Bb Gg Rr
+        0b_11_11_11,
+        0b_10_11_11,
+        0b_01_11_11,
+        0b_10_11_10,
+        0b_10_11_01,
+        0b_10_10_01,
+        0b_10_01_01,
+        0b_10_01_00, # Final sky.
+        0b_10_00_00,
+        0b_01_00_00  # Final floor.
+    ]
     def __init__(self, raybox: RayboxZeroController = None):
         self.raybox = raybox
         self.leak = 0
         if FLIPPED:
-            self.sky_color      = 0b10_10_10
-            self.floor_color    = 0b01_01_01
+            self.sky_color      = RBZMap.FLASH_STEPS[9] # 0b10_10_10
+            self.floor_color    = RBZMap.FLASH_STEPS[7] # 0b01_01_01
         else:
-            self.sky_color      = 0b01_01_01
-            self.floor_color    = 0b10_10_10
+            self.sky_color      = RBZMap.FLASH_STEPS[7] # 0b01_01_01
+            self.floor_color    = RBZMap.FLASH_STEPS[9] # 0b10_10_10
         self.map_cols = RBZ_MAP_COLS
         self.map_rows = RBZ_MAP_ROWS
         self.map_width = float(self.map_cols)
@@ -134,6 +150,7 @@ class RBZMap:
         self.screen_width = float(SCREEN_W)
         self.screen_height = float(SCREEN_H)
         self.map_surface = None
+        self.flash_step = 0
         # Initialise map to our bitwise pattern per:
         # https://github.com/algofoogle/raybox-zero/blob/main/src/rtl/map_rom.v
         self.map_data = [0] * (self.map_cols * self.map_rows)
@@ -174,6 +191,24 @@ class RBZMap:
 
                 self.cell(x,y,b1|b0)
         self.generate_map_surface()
+
+    def env_flash(self, start=False):
+        if FLIPPED:
+            sky = self.raybox.set_floor
+            floor = self.raybox.set_sky
+        else:
+            sky = self.raybox.set_sky
+            floor = self.raybox.set_floor
+        count = len(RBZMap.FLASH_STEPS)
+        if start:
+            self.flash_step = count
+        elif self.flash_step > 0:
+            self.flash_step -= 1
+        if self.flash_step > 2:
+            sky(RBZMap.FLASH_STEPS[count-self.flash_step])
+        if self.flash_step > 0:
+            floor(RBZMap.FLASH_STEPS[count-self.flash_step])
+        return self.flash_step
 
     # Look up the colour we should render in the map preview, based on wall type:
     def cell_color_lut(self, color: int):
@@ -285,29 +320,61 @@ class Actor:
 
 
 class Player(Actor):
-    def __init__(self, x: float, y: float):
+    def __init__(self, x: float, y: float, angle: float = 0.0):
         super().__init__(x, y, (220,0,180), PLAYER_SIZE) #48.0/64.0) # Wolf3D player seems to be 0.6875 units wide.
         self.initial_x = x
         self.initial_y = y
+        self.initial_a = angle
+        self.facing_scaler = 1.0
+        self.vplane_scaler = 1.0
         self.reset()
 
+    def __setattr__(self, name, value):
+        if name in ['facing_scaler', 'vplane_scaler']:
+            value = max(value, -2.0)        # Clamp; lower limit supported by raybox-zero is -2.0
+            value = min(value,  2.0-2**-9)  # Clamp; upper limit is 1 bit short of 2.0
+            self.__dict__[name] = value
+        else:
+            return super().__setattr__(name, value)
+
+    def zoom_pulse(self, start=False):
+        if start:
+            self.facing_scaler = 1.2
+        elif self.facing_scaler > 1.0:
+            self.facing_scaler *= 0.97
+
+    # Magnitude of the 'facing' vector:
+    def facing_mag(self):
+        return 1.0*self.facing_scaler
+    
+    # Magnitude of the 'viewplane' vector:
+    def vplane_mag(self):
+        return 0.5*self.vplane_scaler
+    
+    def current_view_vectors(self):
+        sina, cosa = math.sin(self.a), math.cos(self.a)
+        fm, vm = self.facing_mag(), self.vplane_mag()
+        return [
+            self.x, self.y,
+            sina * fm, cosa * fm,
+            -cosa * vm, sina * vm
+        ]
+    
     # Reset player position/orientation (POV) to a known good value:
     def reset(self):
         self.x = self.initial_x
         self.y = self.initial_y
-        self.facing_x =  0.0
-        self.facing_y = -1.0
-        self.vplane_x =  0.5
-        self.vplane_y =  0.0
+        self.a = self.initial_a
+        self.facing_scaler = 1.0
+        self.vplane_scaler = 1.0
 
     # Draw the player position and orientation overlaid on the on-screen map:
     def render(self, map: RBZMap, screen):
         flipper = -1 if FLIPPED else 1
         (cx,cy) = super().render(map, screen)
-        fx = self.facing_x*flipper
-        fy = self.facing_y
-        vx = self.vplane_x*flipper
-        vy = self.vplane_y
+        _, _, fx, fy, vx, vy = self.current_view_vectors()
+        fx *= flipper
+        vx *= flipper
         s = map.screen_scale #-1.0
         fx *= s
         fy *= s
@@ -318,16 +385,11 @@ class Player(Actor):
 
     # Adjust the current player orientation by applying a rotational transformation:
     def rotate_vectors(self, a):
-        ca = math.cos(a)
-        sa = math.sin(a)
-        nx =  self.facing_x*ca + self.facing_y*sa
-        ny = -self.facing_x*sa + self.facing_y*ca
-        self.facing_x = nx
-        self.facing_y = ny
-        nx =  self.vplane_x*ca + self.vplane_y*sa
-        ny = -self.vplane_x*sa + self.vplane_y*ca
-        self.vplane_x = nx
-        self.vplane_y = ny
+        self.a += a
+        if self.a > 2.0*math.pi:
+            self.a -= 2.0*math.pi
+        elif self.a < 0:
+            self.a += 2.0*math.pi
 
     # Recalculate vectors by applying user inputs, scaled by time since last update:
     def recalc_vectors(self, dir_keys, delta_time, mouse, shift_key, alt_key, clip_map: RBZMap = None):
@@ -345,10 +407,12 @@ class Player(Actor):
         my = 0.0
         ma = 0.0 # Angular motion.
 
-        if dir_keys[KEY_NORTH]: mx += self.facing_x; my += self.facing_y
-        if dir_keys[KEY_SOUTH]: mx -= self.facing_x; my -= self.facing_y
-        if dir_keys[KEY_WEST ]: mx += self.facing_y * flipper; my -= self.facing_x * flipper
-        if dir_keys[KEY_EAST ]: mx -= self.facing_y * flipper; my += self.facing_x * flipper
+        #SMELL: Motion scaling is affected by the size of self.facing_mag() if done this way:
+        _, _, fx, fy, _, _ = self.current_view_vectors()
+        if dir_keys[KEY_NORTH]: mx += fx;           my += fy
+        if dir_keys[KEY_SOUTH]: mx -= fx;           my -= fy
+        if dir_keys[KEY_WEST ]: mx += fy * flipper; my -= fx * flipper
+        if dir_keys[KEY_EAST ]: mx -= fy * flipper; my += fx * flipper
 
         # (Try to) apply motion to player position (collision detection considered),
         # normalising movement (so it doesn't exceed maximum when multiple keys are pressed):
@@ -388,13 +452,14 @@ class Player(Actor):
     # match the requirements of the raybox-zero "Vectors" SPI interface,
     # optionally as strings of binary digits instead of integers:
     def fixed(self, k: str = None, binary: bool = False):
+        px, py, fx, fy, vx, vy = self.current_view_vectors()
         m = {
-            'player_x': self.x,
-            'player_y': self.y,
-            'facing_x': self.facing_x,
-            'facing_y': self.facing_y,
-            'vplane_x': self.vplane_x,
-            'vplane_y': self.vplane_y,
+            'player_x': px,
+            'player_y': py,
+            'facing_x': fx,
+            'facing_y': fy,
+            'vplane_x': vx,
+            'vplane_y': vy,
         }
         # Fixed-point formats used by raybox-zero:
         q = {
@@ -544,6 +609,8 @@ while running:
         vectors = player.fixed(binary=True)
 
         raybox.set_raw_pov(''.join(vectors))
+        game_map.env_flash()
+        player.zoom_pulse()
 
         # Render our preview window:
         screen.fill((40,80,120))
@@ -561,10 +628,11 @@ while running:
                 )
         # Display other data:
         # Vectors (decimal floating-point):
+        px, py, fx, fy, vx, vy = player.current_view_vectors()
         text = font.render(
-            f"player({player.x:15.6f}, {player.y:15.6f})  "+
-            f"facing({player.facing_x:11.6f}, {player.facing_y:11.6f})  "+
-            f"vplane({player.vplane_x:11.6f}, {player.vplane_y:11.6f})", True, (255,255,255))
+            f"player({px:15.6f}, {py:15.6f})  "+
+            f"facing({fx:11.6f}, {fy:11.6f})  "+
+            f"vplane({vx:11.6f}, {vy:11.6f})", True, (255,255,255))
         rect = text.get_rect()
         rect.bottomright = (SCREEN_W, SCREEN_H-rect.height)
         screen.blit(text, rect)
@@ -617,13 +685,21 @@ while running:
         if event.type == pygame.QUIT:
             print("Exiting: Pygame QUIT event")
             running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            game_map.env_flash(True)
+            player.zoom_pulse(True)
         elif event.type == pygame.MOUSEWHEEL:
+            mult = 1.0
             add_speed = 1
+            zoom_speed = 0.01
             # Modifier keys scale mousewheel movements:
-            if ctrl_key:    add_speed *= 2
-            if shift_key:   add_speed *= 4
-            if alt_key:     add_speed *= 8
-            if keys[pygame.K_7]: game_map.leak += event.y * add_speed
+            if ctrl_key:    mult *= 2
+            if shift_key:   mult *= 4
+            if alt_key:     mult *= 8
+            if keys[pygame.K_7]:
+                game_map.leak += event.y * add_speed * mult
+            else:
+                player.facing_scaler *= 1.0 + event.y * zoom_speed * mult
         elif event.type == pygame.KEYDOWN:
             match event.key:
                 case pygame.K_ESCAPE:
@@ -677,3 +753,16 @@ print(f"Avg loops: {int(sum_loops/hit_counter):5}")
 print(f"Max delta: {max_delta/NSMS:6.3f}ms")
 print(f"Avg delta: {sum_deltas/hit_counter/NSMS:6.3f}ms")
 print(f"Pygame events: {event_counter}")
+
+"""
+000055 - floor base     
+0000aa                  
+0055aa - sky base       
+5555aa                  
+55aaaa                  
+55ffaa                  
+aaffaa                  
+ffff55                  
+ffffaa                  
+ffffff                  
+"""

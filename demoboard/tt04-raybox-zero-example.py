@@ -1,5 +1,17 @@
 import time
+import math
 from machine import Pin, SoftSPI
+
+# Make sure the raybox-zero project is selected and initialised:
+tt.clock_project_stop()
+tt.mode = RPMode.ASIC_RP_CONTROL
+tt.reset_project(True)
+tt.input_byte = 0
+tt.shuttle.tt_um_algofoogle_raybox_zero.enable()
+tt.clock_project_PWM(25_175_000)
+tt.reset_project(False)
+# Turn on debug overlay:
+tt.in3(True)
 
 # Raybox-Zero SPI interface:
 class RBZSPI:
@@ -49,8 +61,8 @@ class RBZSPI:
             data = ('0'*count + data)[-count:] # Zero-pad up to the required count.
         return data
 
-    def send_payload(self, data, count=None):
-        start_time = time.ticks_us()
+    def send_payload(self, data, count=None, debug=False):
+        if debug: start_time = time.ticks_us()
         self.txn_start()
         if type(data) is bytearray or type(data) is bytes:
             self.spi.write(data)
@@ -79,24 +91,27 @@ class RBZSPI:
             # Convert this binary string to a bytearray and send it:
             self.spi.write( int(bin,2).to_bytes(len(bin)//8, 'bin') )
         self.txn_stop()
-        stop_time = time.ticks_us()
-        diff = time.ticks_diff(stop_time, start_time)
-        print(f"SPI transmit time: {diff} us")
+        if debug:
+            stop_time = time.ticks_us()
+            diff = time.ticks_diff(stop_time, start_time)
+            print(f"SPI transmit time: {diff} us")
 
 class POV(RBZSPI):
-    def __init__(self):         super().__init__(tt, 'pov')
+    def __init__(self):
+        super().__init__(tt, 'pov')
 
-    def set_raw_pov(self, pov): self.send_payload(pov, 74)
+    def set_raw_pov(self, pov, debug=False):
+        self.send_payload(pov, 74, debug=debug)
 
-    def set_raw_pov_chunks(self, px, py, fx, fy, vx, vy):
+    def set_raw_pov_chunks(self, px, py, fx, fy, vx, vy, debug=False):
         self.send_payload([
             (px, 15),   # playerX: UQ6.9
             (py, 15),   # playerY: UQ6.9
             (fx, 11),   # facingX: SQ2.9
             (fy, 11),   # facingY: SQ2.9
             (vx, 11),   # vplaneX: SQ2.9
-            (vy, 11)    # vplaneY: SQ2.9
-        ])
+            (vy, 11),   # vplaneY: SQ2.9
+        ], debug=debug)
 
     def float_to_fixed(self, f, q: str = 'Q12.12') -> int:
         if q == 'Q12.12':
@@ -112,12 +127,24 @@ class POV(RBZSPI):
         else:
             raise Exception(f"Unsupported fixed-point format: {q}")
 
-    def pov(self, px, py, fx, fy, vx, vy):
-        self.set_raw_pov_chunks(
+    def pov(self, px, py, fx, fy, vx, vy, debug=False):
+        pov = [
             self.float_to_fixed(px, 'UQ6.9'), self.float_to_fixed(py, 'UQ6.9'),
             self.float_to_fixed(fx, 'SQ2.9'), self.float_to_fixed(fy, 'SQ2.9'),
             self.float_to_fixed(vx, 'SQ2.9'), self.float_to_fixed(vy, 'SQ2.9')
-        )
+        ]
+        self.set_raw_pov_chunks(*pov, debug)
+        if debug: print(pov)
+
+    def angular_pov(self, px, py, a=0.0, facing=1.0, vplane=0.5, debug=False):
+        sina, cosa = math.sin(a), math.cos(a)
+        pov = [
+            px, py,
+            sina*facing, cosa*facing,
+            -cosa*vplane, sina*vplane
+        ]
+        if debug: print(pov)
+        self.pov(*pov, debug=debug)
 
 
 class REG(RBZSPI):
@@ -160,6 +187,12 @@ class REG(RBZSPI):
 pov = POV()
 reg = REG()
 
+# Let's go for light and dark blue backgrounds:
+b0=0b_10_01_00
+b1=0b_01_00_00
+reg.sky(b1)
+reg.floor(b0)
+
 # These are the POVs I originally sent to Sylvain (@tnt) here:
 # https://discord.com/channels/1009193568256135208/1222582697596162220/1224328766025891840
 
@@ -179,14 +212,38 @@ demo_povs = [
     # Uniform view of 3 wall types:
     [    6.820312,  9.496094,
          0.998047,  0.000000,
-         0.000000,  0.500000    ]
+         0.000000,  0.500000    ],
+    None
 ]
 
 while True:
-    for view in demo_povs:
-        time.sleep_ms(1000)
-        start_time = time.ticks_us()
-        pov.pov(*view)
-        stop_time = time.ticks_us()
-        diff = time.ticks_diff(stop_time, start_time)
-        print(f"Total update time: {diff} us")
+    for i in range(len(demo_povs)):
+        view = demo_povs[i]
+        if view is None:
+            time.sleep_ms(1000)
+            print('Doing full rotation test in 0.25-degree steps...')
+            start_time = time.ticks_ms()
+            count = 0
+            for a in range(90*4,450*4+1):
+                count += 1
+                pov.angular_pov(*(demo_povs[3][0:2]), float(a)/4.0 * math.pi/180.0)
+            stop_time = time.ticks_ms()
+            diff = time.ticks_diff(stop_time, start_time)
+            print(f"Total time for full rotation: {diff} ms => {float(diff)/float(count):.3f} ms/update")
+            time.sleep_ms(1000)
+            print('Doing fine-grained rotation test... ',end='')
+            for w in range(2):
+                for a in range(8800,9200):
+                    pov.angular_pov(*(demo_povs[3][0:2]), float(a)/100.0 * math.pi/180.0)
+                for a in range(-9200,-8800):
+                    pov.angular_pov(*(demo_povs[3][0:2]), -float(a)/100.0 * math.pi/180.0)
+            print('Done')
+
+        else:
+            time.sleep_ms(1000)
+            print(f'Presenting view {i}: ', end='')
+            start_time = time.ticks_us()
+            pov.pov(*view)
+            stop_time = time.ticks_us()
+            diff = time.ticks_diff(stop_time, start_time)
+            print(f"Total update time: {diff} us")
