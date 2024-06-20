@@ -56,8 +56,13 @@ SCREEN_W            = 900
 SCREEN_H            = 700
 WINDOW_TITLE        = 'raybox_game'
 
-NSMS        = 1_000_000    # Nanoseconds to milliseconds.
-TICK        = 5_000_000    # 5ms: Size of a "tick" (i.e. the time unit we want to schedule to) in nanoseconds.
+# Nanoseconds to milliseconds:
+NSMS        = 1_000_000
+
+# 8ms: Size of a "tick" (i.e. the time unit we want to schedule to) in nanoseconds.
+# This really only needs to be less than 1 frame (~16.7ms), but I want to see if
+# it's possible to schedule at least 2 updates per frame:
+TICK        = 8_000_000
 
 # Set working dir to wherever this script is located:
 os.chdir(os.path.dirname(os.path.abspath(__file__)))

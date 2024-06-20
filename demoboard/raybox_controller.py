@@ -1,7 +1,8 @@
 # This is Python 3.x code that runs on a host PC to send commands/data to raybox-zero.
 # It does this by connecting to MicroPython on the TT04 board's RP2040, and then:
 # 1. Preloads it with the MicroPython code in raybox-peripheral.py
-# 2. Uses the MicroPython REPL in "raw mode" to send update commands for raybox-zero.
+# 2. Selects project tt_um_algofoogle_raybox_zero and configures it (inc. clock/reset)
+# 3. Uses the MicroPython REPL in "raw mode" to send update commands for raybox-zero.
 
 import time
 import sys
@@ -11,6 +12,8 @@ import os
 from pathlib import Path
 
 PATH_TO_RAYBOX_PERIPHERAL_CODE = './raybox_peripheral.py'
+CLOCK_SPEED = 25_000_000  # Clock for design. 25.175MHz is 'typical' VGA clock, at 59.94fps
+MACHINE_FREQ = 225_000_000 # RP2040 clock. This should be an integer multiple (2+) of CLOCK_SPEED.
 
 DEBUG = False
 
@@ -163,15 +166,17 @@ class RayboxZeroController(TT04):
         print(self.reset_tt_pin_modes())
         self.set_ui_in(0b0000_1000)
         self.select_project('tt_um_algofoogle_raybox_zero')
-        self.set_clock_hz(25e6)
+        print(self.exec(f'machine.freq({int(MACHINE_FREQ)})'))
+        print(self.set_clock_hz(CLOCK_SPEED))
         self.reset_project()
         peripheral_code_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             PATH_TO_RAYBOX_PERIPHERAL_CODE
         )
         remote_api_code = Path(peripheral_code_path).read_text()
-        r = self.exec(remote_api_code)
-        print(r)
+        print(self.exec(remote_api_code))
+        print(self.exec('print(repr(tt))'))
+        print('RP2040 core clock:', self.exec('print(machine.freq())'))
 
     def debug(self, state):
         self.set_ui_bit(self.UI_DEBUG, state)

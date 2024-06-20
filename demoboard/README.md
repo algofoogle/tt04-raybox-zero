@@ -6,14 +6,19 @@ Here you will find information and MicroPython scripts that can be used to test 
 
 Above is the default view of raybox-zero after a reset, with no other inputs.
 
-> [!NOTE]
-> The TT04 version of raybox-zero suffered a synthesis bug, as you can see in the image above. I've [documented this below](#tt04-synthesis-bug).
+This page includes:
+*   [Quick start using a VGA DAC and Tiny Tapeout Commander](#heres-my-own-quick-start-guide)
+*   [Simple demo program you can run directly in TT Commander](#tt04-raybox-zero-examplepy)
+*   [FPS game demo (raybox_game) driven by your host computer](#raybox_gamepy)
+*   [Synthesis bug details](#tt04-synthesis-bug) (The raybox-zero TT04 version suffered a synthesis bug, seen in the image above)
 
-You can go to https://tinytapeout.com/start/tt04 for high-level instructions on getting started with the TT04 Demo Board.
+## Here's my own quick-start guide
 
-## Here's my own quick-start guide...
+It's quick and easy to get this running using [Tiny Tapeout Commander]!
 
-First, wire up a VGA DAC, ideally one that provides at least RGB222 (raybox-zero uses exactly this much)...
+If you want to know more about the TT04 Demo Board itself, you can go to https://tinytapeout.com/start/tt04 for high-level instructions on getting started. However, you can also just crack on...
+
+First, wire up a VGA DAC, ideally one that provides at least RGB222 (raybox-zero uses exactly this much):
 
 ### Wiring up a Tiny VGA PMOD
 
@@ -158,6 +163,13 @@ The TT04 version of raybox-zero suffered a synthesis bug, which was evidently ca
     *   RTL simulation and running on an FPGA don't show the issue, but gate-level simulation seems to recreate the bug perfectly.
     *   Whether running the silicon at 3MHz, 24MHz, or 31.5MHz, the visual artefacts appear to be exactly the same (so not affected by timing).
 *   The problem seems to have gone away in some future version of OpenLane (i.e. I don't see the same problem in 3 more recent gate-level simulations I've done), but to be honest I've not checked *exactly* the same raybox-zero code version in those newer OpenLane versions, so I need to check that more carefully at some point.
+
+
+## Other testing notes
+
+The clock speed range I've been able to test depends on what my monitor will sync to:
+*   Slowest clock: 23.25MHz (93MHz RP2040 core) => ~55.4fps
+*   Fastest clock: 32.25MHz (129MHz RP2040 core) => ~76.8fps
 
 
 [Tiny Tapeout Commander]: https://commander.tinytapeout.com/
