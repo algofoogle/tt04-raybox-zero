@@ -49,7 +49,7 @@ RBZ_MAP_ROWS        = 16
 RBZ_MAP_SCALE       = 32.0  # Controls how big our map preview is.
 PLAYER_SIZE         = 0.55  # min=0.28 (less will expose overflows). 0.6875 is same as Wolf3D? 0.55 fees 'right'
 ROTATE_MOUSE        = False # If True, use mouse Y (up/down) instead of X.
-FLIPPED             = True  # If True, assume monitor is rotated clockwise rather than CCW.
+FLIPPED             = False # If True, assume monitor is rotated clockwise rather than CCW.
 
 # This is the size of the game map window that we display on the PC:
 SCREEN_W            = 900

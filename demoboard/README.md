@@ -9,19 +9,27 @@ Above is the default view of raybox-zero after a reset, with no other inputs.
 > [!NOTE]
 > The TT04 version of raybox-zero suffered a synthesis bug, as you can see in the image above. I've [documented this below](#tt04-synthesis-bug).
 
-This is a WIP (Work In Progress).
-
 You can go to https://tinytapeout.com/start/tt04 for high-level instructions on getting started with the TT04 Demo Board.
 
 ## Here's my own quick-start guide...
 
-First, wire up a VGA DAC, ideally one that provides at least RGB222 (raybox-zero uses exactly this much). The Digilent PmodVGA is what I have, so I wire it as follows (including )
+First, wire up a VGA DAC, ideally one that provides at least RGB222 (raybox-zero uses exactly this much)...
+
+### Wiring up a Tiny VGA PMOD
+
+The [Tiny VGA PMOD](https://github.com/mole99/tiny-vga) is a great choice, but because the TT04 version of raybox-zero didn't yet match the Tiny VGA PMOD's direct pinout, **it needs to be wired up correctly**:
+
+![Tiny VGA PMOD wiring for raybox-zero TT04](../doc/vga-wiring-tiny.png)
+
+
+### Alternative: Wiring up a PmodVGA DAC
+
+The [Digilent PmodVGA](https://digilent.com/reference/pmod/pmodvga/start) is what I have, so I wire it as follows (including pulling the extra unused colour bits low, as shown by the black wires):
 
 ![PmodVGA wiring for raybox-zero TT04](../doc/vga-wiring.png)
 
-The Tiny VGA PMOD would work just as well. **That too would need to be wired up correctly** because the TT04 version of raybox-zero didn't yet match the Tiny VGA PMOD's direct pinout.
 
-Then...
+### Getting raybox-zero running via TT Commander
 
 1.  Plug in the TT04 Demo Board via USB.
 2.  Go to the [Tiny Tapeout Commander]
@@ -36,19 +44,27 @@ Then...
 
 ## Example test programs
 
+> [!NOTE]
+> Sometimes I see the RP2040 hang after several runs of sending lots of code; MicroPython memory leak (or expected behaviour)? This happens both in the TT Commander and when sending directly over USB serial. In my code this appears as a hang (in pyserial) where CTRL+C won't abort. My code detects a timeout but remains hung; you need to pull the USB cord.
+
 ### raybox_game.py
 
-You run this one on your host computer to control the TT04 demo board. It's a very simple example of a game environment rendered on the raybox-zero TT04 ASIC, but the host PC works out the game logic in response to keyboard/mouse inputs and offloads 3D world rendering to the TT04 demo board.
+**You run this one on your host computer** to control the TT04 demo board without TT Commander. It's a very simple example of a game environment rendered on the raybox-zero TT04 ASIC: the host PC works out the game logic in response to keyboard (WASD motion keys) and mouse inputs, and offloads 3D world rendering to the TT04 demo board.
 
-NOTE: So far I've only tested this fully on Windows, and in a Linux VM. For the Linux VM, keyboard interaction is fine but mouse movements don't work properly, probably a virtualisation problem rather than a Linux problem.
+![raybox_game.py running on a host PC to control the raybox-zero game world on the ASIC](../doc/raybox_game.jpg)
 
-NOTE: This is intended to be used with your monitor in "portrait mode" (i.e. rotated on its side):
+This is intended to be used with your monitor in "portrait mode" (i.e. rotated on its side):
 *   It is best if you rotate it anti-clockwise, and ensure that `FLIPPED = False` in `raybox_game.py`
 *   It also works if you rotate it clockwise, and ensure that `FLIPPED = True` in `raybox_game.py`
 
+If you can't be bothered rotating your monitor, then I recommend setting `ROTATE_MOUSE = True` in `raybox_game.py`, in which case your mouse *up/down* motion (instead of left/right) has the illusion of "pitching" your view up and down as you fly through an obstacle course with the WASD keys.
+
+> [!NOTE]
+> This has been tested on Windows 11 (native) and in a Linux VM. For some VM setups, you'll need to make sure your VM "captures" your mouse so that my code can also capture the mouse; in VirtualBox this usually means turning 'Mouse Integration' *off* and then clicking inside the VM.
+
 To set up and run the game demo:
 
-1.  Requires probably Python 3.9 or above. I've been testing on 3.12.0.
+1.  Requires Python 3.9 or above. I've been testing on 3.12.0.
 2.  From within the `demoboard` dir, install Python packages: `pip install -r requirements.txt`
 3.  Plug in your TT04 demo board via USB (unplug it first if necessary, to reset it).
 4.  Run: `python3 ./raybox_game.py`
@@ -62,39 +78,44 @@ This will assume your TT04 board's RP2040 USB serial interface is the *last* dev
 To control the 'game':
 
 ```
-# Main input functions:
-# - WASD keys move
-# - Mouse left/right motion rotates
-# - Left/right keyboard arrows rotate also (as do Q/E)
-# - Mouse left button 'shoots' (just a visual effect)
+Main input functions:
+- WASD keys move
+- Mouse left/right motion rotates
+- Left/right keyboard arrows rotate also (as do Q/E)
+- Mouse left button 'shoots' (just a visual effect)
 
-# Numpad:
-#     9: sky_color++
-#     7: sky_color--
-#     3: floor_color++
-#     1: floor_color--
-#     +: zoom in map preview
-#     -: zoom out map preview
+Numpad:
+    9: sky_color++
+    7: sky_color--
+    3: floor_color++
+    1: floor_color--
+    +: zoom in map preview
+    -: zoom out map preview
 
-# Mousewheel:
-#     Mousewheel scales the 'facing' vector, which basically
-#     has the effect of adjusting "FOV", otherwise described
-#     as telephoto/wide-angle zooming.
-#
-#     Modifiers (can use any combo):
-#         - CTRL: x2 
-#         - SHIFT: x4
-#         - ALT: x8
-#
-#     If you hold the '7' key on your keyboard main number row, the mousewheel action
-#     instead controls the 'leak' register (displacing floor height).
+Mousewheel:
+    Mousewheel scales the 'facing' vector, which basically
+    has the effect of adjusting "FOV", otherwise described
+    as telephoto/wide-angle zooming.
 
-# Other:
-#     ESC: Quit
-#     M or F12: Toggle mouse capture
-#     R: Reset game state
-#     `: Toggle vectors debug overlay
+    Modifiers (can use any combo):
+        - CTRL: x2 
+        - SHIFT: x4
+        - ALT: x8
+
+    If you hold the '7' key on your keyboard main number row, the mousewheel action
+    instead controls the 'leak' register (displacing floor height).
+
+Other:
+    ESC: Quit
+    M or F12: Toggle mouse capture
+    R: Reset game state
+    `: Toggle vectors debug overlay
 ```
+
+> [!NOTE]
+> The raybox-zero hardware refreshes at a constant ~60fps frame rate (based on system clock), and can receive updates to the POV (point-of-view) and all other registers at least as fast as that. Various layers between the host PC and ASIC are currently a bottleneck, though, as I haven't yet optimised the code.
+>
+> I would next optimise: (a) using RP2040 PIO in MicroPython to replace SoftSPI; (b) sending raw data streams from the host to a MicroPython listener, instead of using the raw REPL; (c) using actual binary streams instead of bit-strings; (d) fixing the ugly game loop on the host side to be more like a normal frame-by-frame loop.
 
 
 ### tt04-raybox-zero-example.py
@@ -103,7 +124,7 @@ To control the 'game':
 
 You can run this example by:
 
-1.  Going to the 'REPL' tab in the Commander (continuing from above).
+1.  Going to the 'REPL' tab in the Commander.
 2.  Pressing CTRL+E to go into "paste" mode.
 3.  Copy-pasting the contents of the file above into the REPL -- make sure you use Ctrl+**Shift**+V to paste.
 4.  Pressing CTRL+D to then commit/execute the code.
@@ -115,7 +136,7 @@ This will show a demo/test loop that:
 
 If you like, you can press CTRL+C to interrupt the code, then issue your own updates via the `reg` and `pov` objects, for example:
 
-*   Put the player at a point on map and with a 45-degree rotation:
+*   Put the player at a point on the map and with a 45-degree rotation:
     ```py
     pov.angular_pov(
         7.0, 9.5,               # Position
