@@ -9,6 +9,12 @@ import math
 import re
 from raybox_controller import RayboxZeroController
 
+# Main input functions:
+# - WASD keys move
+# - Mouse left/right motion rotates
+# - Left/right keyboard arrows rotate also (as do Q/E)
+# - Mouse left button 'shoots' (just a visual effect)
+
 # Numpad:
 #     9: sky_color++
 #     7: sky_color--
@@ -18,22 +24,23 @@ from raybox_controller import RayboxZeroController
 #     -: zoom out map preview
 
 # Mousewheel:
+#     Mousewheel scales the 'facing' vector, which basically
+#     has the effect of adjusting "FOV", otherwise described
+#     as telephoto/wide-angle zooming.
+#
 #     Modifiers (can use any combo):
 #         - CTRL: x2 
 #         - SHIFT: x4
 #         - ALT: x8
-#     With no other key held, mousewheel scales the 'facing' vector, which basically
-#     has the effect of adjusting "FOV", otherwise described as telephoto/wide-angle zooming.
 #
-#     You can also hold any of the following on main number row to apply the mousewheel action:
-#         - 7: leak
+#     If you hold the '7' key on your keyboard main number row, the mousewheel action
+#     instead controls the 'leak' register (displacing floor height).
 
 # Other:
 #     ESC: Quit
 #     M or F12: Toggle mouse capture
 #     R: Reset game state
 #     `: Toggle vectors debug overlay
-#     Enter: Reset map preview zoom
 
 DEBUG               = False # Print debug info for each update?
 DISABLE_COLLISIONS  = False # Disable collision detection?
@@ -428,11 +435,11 @@ class Player(Actor):
             player.move(step*mx/mag, step*my/mag, clip_map)
 
         # Keyboard rotation:
-        if dir_keys[KEY_CCW  ]: ma += 1.0*delta_time/1000.0 * flipper
-        if dir_keys[KEY_CW   ]: ma -= 1.0*delta_time/1000.0 * flipper
+        if dir_keys[KEY_CCW  ]: ma -= delta_time/1000.0 * flipper
+        if dir_keys[KEY_CW   ]: ma += delta_time/1000.0 * flipper
         # Mouse rotation:
         ma += mouse*mouse_rotate_speed
-        player.rotate_vectors(mouse*mouse_rotate_speed*flipper)
+        player.rotate_vectors(ma*flipper)
         
     # Convert a given floating-point number to a fixed-point representation,
     # optionally returning the value as an integer or string of binary digits:
@@ -626,7 +633,7 @@ while running:
         screen.blit(info_text, (0,0))
         # Draw WASD keys overlay:
         for n in range(6):
-            if n != 0 and n!= 2:
+            if True: #n != 0 and n!= 2:
                 pygame.draw.rect(
                     screen,
                     (0,255,0),
@@ -708,35 +715,35 @@ while running:
             else:
                 player.facing_scaler *= 1.0 + event.y * zoom_speed * mult
         elif event.type == pygame.KEYDOWN:
-            match event.key:
-                case pygame.K_ESCAPE:
+            if event.key == pygame.K_ESCAPE:
                     print("Exiting: ESC key pressed")
                     running = False
-                case pygame.K_m | pygame.K_F12:
-                    print("Toggle mouse capture:", "captured" if capture_mouse() else "released")
-                case pygame.K_r:
-                    print("Reset game state")
-                    player.reset()
-                    game_map.reset()
-                case pygame.K_BACKQUOTE:
-                    r = raybox.toggle_debug()
-                    print(f"Turning Vectors DEBUG signal {'ON' if r else 'OFF'}")
-                case _:
-                    if FLIPPED:
-                        match event.key:
-                            case pygame.K_KP_9: game_map.floor_color+= 1 # Increment floor colour.
-                            case pygame.K_KP_7: game_map.floor_color-= 1 # Decrement floor colour.
-                            case pygame.K_KP_3: game_map.sky_color  += 1 # Increment sky colour.
-                            case pygame.K_KP_1: game_map.sky_color  -= 1 # Decrement sky colour.
-                    else:
-                        match event.key:
-                            case pygame.K_KP_9: game_map.sky_color  += 1 # Increment sky colour.
-                            case pygame.K_KP_7: game_map.sky_color  -= 1 # Decrement sky colour.
-                            case pygame.K_KP_3: game_map.floor_color+= 1 # Increment floor colour.
-                            case pygame.K_KP_1: game_map.floor_color-= 1 # Decrement floor colour.
+            elif event.key == pygame.K_m | pygame.K_F12:
+                print("Toggle mouse capture:", "captured" if capture_mouse() else "released")
+            elif event.key == pygame.K_r:
+                print("Reset game state")
+                player.reset()
+                game_map.reset()
+            elif event.key == pygame.K_BACKQUOTE:
+                r = raybox.toggle_debug()
+                print(f"Turning Vectors DEBUG signal {'ON' if r else 'OFF'}")
+            elif FLIPPED:
+                if   event.key == pygame.K_KP_9: game_map.floor_color+= 1 # Increment floor colour.
+                elif event.key == pygame.K_KP_7: game_map.floor_color-= 1 # Decrement floor colour.
+                elif event.key == pygame.K_KP_3: game_map.sky_color  += 1 # Increment sky colour.
+                elif event.key == pygame.K_KP_1: game_map.sky_color  -= 1 # Decrement sky colour.
+            else:
+                if   event.key == pygame.K_KP_9: game_map.sky_color  += 1 # Increment sky colour.
+                elif event.key == pygame.K_KP_7: game_map.sky_color  -= 1 # Decrement sky colour.
+                elif event.key == pygame.K_KP_3: game_map.floor_color+= 1 # Increment floor colour.
+                elif event.key == pygame.K_KP_1: game_map.floor_color-= 1 # Decrement floor colour.
 
     # Check for movement keys:
     dir_keys = list(map(lambda v: keys[v], [pygame.K_q, pygame.K_w, pygame.K_e, pygame.K_a, pygame.K_s, pygame.K_d]))
+    dir_keys[KEY_CCW  ] |= keys[pygame.K_LEFT]
+    dir_keys[KEY_CW   ] |= keys[pygame.K_RIGHT]
+    dir_keys[KEY_NORTH] |= keys[pygame.K_UP]
+    dir_keys[KEY_SOUTH] |= keys[pygame.K_DOWN]
 
     # Update game state based on inputs and time elapsed:
     this_time = pygame.time.get_ticks()
@@ -760,16 +767,3 @@ print(f"Avg loops: {int(sum_loops/hit_counter):5}")
 print(f"Max delta: {max_delta/NSMS:6.3f}ms")
 print(f"Avg delta: {sum_deltas/hit_counter/NSMS:6.3f}ms")
 print(f"Pygame events: {event_counter}")
-
-"""
-000055 - floor base     
-0000aa                  
-0055aa - sky base       
-5555aa                  
-55aaaa                  
-55ffaa                  
-aaffaa                  
-ffff55                  
-ffffaa                  
-ffffff                  
-"""

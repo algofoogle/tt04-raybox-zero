@@ -4,6 +4,8 @@ Here you will find information and MicroPython scripts that can be used to test 
 
 ![Demo board connected to VGA display, running raybox-zero on the TT04 ASIC](../doc/raybox-zero-tt04-board.jpg)
 
+Above is the default view of raybox-zero after a reset, with no other inputs.
+
 > [!NOTE]
 > The TT04 version of raybox-zero suffered a synthesis bug, as you can see in the image above. I've [documented this below](#tt04-synthesis-bug).
 
@@ -36,9 +38,9 @@ Then...
 
 ### raybox_game.py
 
-This is a very simple example of a game environment rendered on the raybox-zero TT04 ASIC, but driven by a host PC responding to keyboard/mouse inputs.
+You run this one on your host computer to control the TT04 demo board. It's a very simple example of a game environment rendered on the raybox-zero TT04 ASIC, but the host PC works out the game logic in response to keyboard/mouse inputs and offloads 3D world rendering to the TT04 demo board.
 
-NOTE: So far I've only tested this on Windows.
+NOTE: So far I've only tested this fully on Windows, and in a Linux VM. For the Linux VM, keyboard interaction is fine but mouse movements don't work properly, probably a virtualisation problem rather than a Linux problem.
 
 NOTE: This is intended to be used with your monitor in "portrait mode" (i.e. rotated on its side):
 *   It is best if you rotate it anti-clockwise, and ensure that `FLIPPED = False` in `raybox_game.py`
@@ -46,7 +48,7 @@ NOTE: This is intended to be used with your monitor in "portrait mode" (i.e. rot
 
 To set up and run the game demo:
 
-1.  Requires probably Python 3.10 or above. I've been testing on 3.12.0.
+1.  Requires probably Python 3.9 or above. I've been testing on 3.12.0.
 2.  From within the `demoboard` dir, install Python packages: `pip install -r requirements.txt`
 3.  Plug in your TT04 demo board via USB (unplug it first if necessary, to reset it).
 4.  Run: `python3 ./raybox_game.py`
@@ -57,31 +59,41 @@ This will assume your TT04 board's RP2040 USB serial interface is the *last* dev
 *   Send the contents of `raybox_peripheral.py` for MicroPython to load a basic interface we can send control signals to.
 *   Present a UI on the host computer that shows the game map, while the raybox-zero VGA display should show your 3D view.
 
-The 3D view responds live to mouse left/right movements and the WASD keyboard keys for motion.
-
-Other keys:
+To control the 'game':
 
 ```
-Numpad:
-    9: sky_color++
-    7: sky_color--
-    3: floor_color++
-    1: floor_color--
+# Main input functions:
+# - WASD keys move
+# - Mouse left/right motion rotates
+# - Left/right keyboard arrows rotate also (as do Q/E)
+# - Mouse left button 'shoots' (just a visual effect)
 
-Mousewheel:
-    Modifiers (can use any combo):
-        - CTRL: x2 
-        - SHIFT: x4
-        - ALT: x8
-    Must hold any of the following on main number row to apply the mousewheel action:
-        - 7: leak
+# Numpad:
+#     9: sky_color++
+#     7: sky_color--
+#     3: floor_color++
+#     1: floor_color--
+#     +: zoom in map preview
+#     -: zoom out map preview
 
-Other:
-    ESC: Quit
-    M or F12: Toggle mouse capture
-    R: Reset game state
-    `: Toggle vectors debug overlay
-    Enter: Reset map preview zoom
+# Mousewheel:
+#     Mousewheel scales the 'facing' vector, which basically
+#     has the effect of adjusting "FOV", otherwise described
+#     as telephoto/wide-angle zooming.
+#
+#     Modifiers (can use any combo):
+#         - CTRL: x2 
+#         - SHIFT: x4
+#         - ALT: x8
+#
+#     If you hold the '7' key on your keyboard main number row, the mousewheel action
+#     instead controls the 'leak' register (displacing floor height).
+
+# Other:
+#     ESC: Quit
+#     M or F12: Toggle mouse capture
+#     R: Reset game state
+#     `: Toggle vectors debug overlay
 ```
 
 
