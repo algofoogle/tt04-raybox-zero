@@ -327,6 +327,7 @@ class Player(Actor):
         self.initial_a = angle
         self.facing_scaler = 1.0
         self.vplane_scaler = 1.0
+        self.zoom_is_pulsing = False
         self.reset()
 
     def __setattr__(self, name, value):
@@ -339,9 +340,15 @@ class Player(Actor):
 
     def zoom_pulse(self, start=False):
         if start:
-            self.facing_scaler = 1.2
-        elif self.facing_scaler > 1.0:
-            self.facing_scaler *= 0.97
+            self.zoom_is_pulsing = True
+            self.facing_scaler /= 1.2
+        elif self.zoom_is_pulsing and self.facing_scaler < 0.999:
+            self.facing_scaler *= 1.0+(1.0-self.facing_scaler)/2.0
+            if self.facing_scaler >= 0.999:
+                self.zoom_is_pulsing = False
+                self.facing_scaler = 1.0
+        else:
+            self.zoom_is_pulsing = False
 
     # Magnitude of the 'facing' vector:
     def facing_mag(self):
