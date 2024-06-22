@@ -1,6 +1,6 @@
 # Testing the t04-raybox-zero ASIC with the TT04 Demo Board
 
-Here you will find information and MicroPython scripts that can be used to test the raybox-zero (TT04 edition) ASIC using the TT04 Demo board, e.g. via the [Tiny Tapeout Commander], and use it for a primitive game demo driven by your computer as the host.
+Here you will find information and MicroPython scripts that can be used to test the **[raybox-zero (TT04 edition) ASIC](https://github.com/algofoogle/tt04-raybox-zero)** using the TT04 Demo board, e.g. via the [Tiny Tapeout Commander], and use it for a primitive game demo driven by your computer as the host.
 
 ![Demo board connected to VGA display, running raybox-zero on the TT04 ASIC](../doc/raybox-zero-tt04-board.jpg)
 
