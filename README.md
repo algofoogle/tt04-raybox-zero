@@ -1,6 +1,6 @@
 ![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/wokwi_test/badge.svg)
 
-# raybox-zero for TT04 (Tiny Tapeout 04)
+# raybox-zero for TT04 (Tiny Tapeout 4)
 
 *   [Overview](#overview)
 *   [Features](#features)
@@ -9,13 +9,22 @@
 
 ## Overview
 
-This is an attempt to create a Verilog HDL design implementing a sort of GPU that is a one-trick pony: It is a very simple ray caster demo (sort of like Wolf3D rendering) driving a VGA display without a framebuffer (i.e. by 'racing the beam'). It's inspired by Wolf3D and based on Lode's popular Raycasting tutorial (https://lodev.org/cgtutor/raycasting.html).
+Thanks to [Tiny Tapeout](https://tinytapeout.com) I was able to make a custom silicon chip that implements a sort of primitive GPU; as an experiment, as a proof of concept, and as a fun weekend project (that took months, and which I'm continuing to [update](https://github.com/algofoogle/tt07-raybox-zero))...
+
+This comes from a Verilog HDL [design I created](https://github.com/algofoogle/raybox-zero) that implements a very simple ray caster demo that presents a 3D-like game world by driving a VGA display without a framebuffer (i.e. by 'racing the beam'). It's inspired by Wolf3D and based on Lode's popular Raycasting tutorial (https://lodev.org/cgtutor/raycasting.html).
 
 Here is the design running on an FPGA (in this case using dithered RGB111 output rather than the design's native RGB222) and a comparison with the same design running in a Verilator-based simulator:
 
 ![raybox-zero running on FPGA and simulator](./doc/fpga-vs-sim-V2.jpg)
 
-The scene is rendered using a grid map of wall blocks, with basic texture mapping, and flat-coloured floor and ceiling. No doors or sprites in this version -- but maybe in TT05? In the TT04 130nm process this uses 4x2 tiles (about 0.16 square millimetres) at ~48% utilisation.
+> [!NOTE]
+> For more information about my testing on the fabricated TT04 ASIC, see [`demoboard/README.md`](./demoboard/README.md).
+
+Here is the actual fabricated version of the design running as part of the [TT04](https://tinytapeout.com/runs/tt04/) ASIC (custom silicon chip) using sky130 standard logic cells (where it exhibits visual glitches due to a bug that existed at the time in the 'OpenLane' synthesis tool used):
+
+![raybox-zero silicon chip output being driven by a Python-based game controller](./doc/raybox_game.jpg)
+
+The scene is rendered using a grid map of wall blocks, with basic texture mapping, and flat-coloured floor and ceiling. No doors or sprites in this version -- but maybe in TT08 or TT09? In the TT04 130nm process this uses 4x2 tiles (about 0.16 square millimetres) at ~48% utilisation.
 
 This repo wraps my [algofoogle/raybox-zero] repo as a submodule in [`src/raybox-zero`](src/raybox-zero/). Raybox-zero can be run on FPGAs (at least, it has a target included for the Altera Cyclone IV as found on a DE0-Nano board), but the purpose of *this* repo is to target silicon, i.e. to be made into an ASIC as part of the [TT04 shuttle](https://app.tinytapeout.com/shuttles/tt04) of [Tiny Tapeout](https://tinytapeout.com/).
 
@@ -65,6 +74,9 @@ through the middle of a wall block.
 ## Write POV via SPI
 
 Upon reset, the POV (Point of View) registers used for rendering are set to display an angled view of the design's small 16x16 grid map world. Because no framebuffer is used, rendering/animation can occur at the full frame rate. The most important thing you'd want to control is the POV.
+
+> [!NOTE]
+> I have some practical code written in MicroPython that can be used to drive the POV (and other registers) SPI interfaces of raybox-zero from a Raspberry Pi Pico (RP2040). See [`demoboard/tt04-raybox-zero-example.py`](./demoboard/tt04-raybox-zero-example.py) and otherwise read [`demoboard/README.md`](./demoboard/README.md)
 
 The registers that store the POV can be updated anytime using the main SPI interface (`ss_n`, `sclk`, `mosi`). NOTE: SPI register values are double-buffered so they only get loaded and take effect at the very end of the visible frame (i.e. start of VBLANK). That means you can update them early, or multiple times per frame, or be in the process of updating them, and there will be no disruption of the current frame rendering; the next frame that gets rendered will only use whatever valid POV last had a completed write. It was designed this way so that you don't *have* to time anything... just write via this SPI interface anytime you want, as slowly as you want (or as quickly, up to probably 5MHz max).
 
@@ -126,7 +138,18 @@ Note also that `vplane` can also just be derived from `facing`.
 
 # News
 
-## Version 1.0 is on the shuttle
+## June 2024: Version 1.0 has been fabricated in silicon, and received!
+
+[**IT WORKS!** Mostly](./demoboard/README.md). Unfortunately there was a bug in the OpenLane version used by TT04, where synthesis (or more likely optimisation) led to an unintended alteration of the logic prior to standard cell placement. This affects the reciprocal approximator module (used for many different functions) and leads to some severe visual errors.
+
+![](./doc/raybox-zero-tt04-board.jpg)
+
+I would've caught the bug at the time had I done a gate-level simulation (not just RTL-level), because it shows up pretty clearly that way. Even had I caught it, though, I might not have been able to do much to workaround whatever OpenLane was doing -- perhaps I could've tested different synthesis modes or chosen to take the netlist from an earlier stage prior to full optimisation.
+
+Still, I'm delighted to see this in action! The display is very stable.
+
+
+## September 2023: Version 1.0 is on the shuttle
 
 The TT04 deadline closed on 2023-09-08 at 20:00 UTC. The [version tagged `1.0`](https://github.com/algofoogle/tt04-raybox-zero/releases/tag/1.0) was successfully [submitted](https://app.tinytapeout.com/projects/136), and will be included when the TT04 ASIC is manufactured. Here is a rendering of the GDS (using 4x2 TT04 tiles):
 

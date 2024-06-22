@@ -107,20 +107,33 @@ Mousewheel:
         - SHIFT: x4
         - ALT: x8
 
-    If you hold the '7' key on your keyboard main number row, the mousewheel action
-    instead controls the 'leak' register (displacing floor height).
+    If you hold one of the following keyboard number row keys,
+    the mousewheel action instead adjusts a different parameter:
+        - 0: sky colour
+        - 1: floor color
+        - 2: 'leak' register (displacing floor height)
 
 Other:
     ESC: Quit
+    F11: Toggle system pause
     M or F12: Toggle mouse capture
     R: Reset game state
     `: Toggle vectors debug overlay
 ```
 
-> [!NOTE]
-> The raybox-zero hardware refreshes at a constant ~60fps frame rate (based on system clock), and can receive updates to the POV (point-of-view) and all other registers at least as fast as that. Various layers between the host PC and ASIC are currently a bottleneck, though, as I haven't yet optimised the code.
->
-> I would next optimise: (a) using RP2040 PIO in MicroPython to replace SoftSPI; (b) sending raw data streams from the host to a MicroPython listener, instead of using the raw REPL; (c) using actual binary streams instead of bit-strings; (d) fixing the ugly game loop on the host side to be more like a normal frame-by-frame loop.
+#### A note on speed
+
+The raybox-zero hardware refreshes at a constant ~60fps frame rate (based on system clock), and can receive updates to the POV (point-of-view) and all other registers at least as fast as that. **Various layers between the host PC and ASIC are currently a bottleneck**, though, as I haven't yet optimised the code.
+
+I would next optimise/improve the Python code by:
+1.  Using RP2040 PIO in MicroPython to replace SoftSPI
+2.  Sending raw data streams from the host to a MicroPython listener (stdin), instead of using the raw REPL
+3.  Using actual binary streams instead of bit-strings
+4.  If necessary, use custom RP2040 firmware for maximum speed
+5.  Fixing the ugly game loop on the host side to be more like a normal frame-by-frame loop
+6.  Maybe tidying up with 'smart' property getters/setters
+7.  Handling 'FLIPPED' mode in the classes instead of putting conditions for it everywhere
+8.  Use a local config file or env vars to control various parameters (like FLIPPED).
 
 
 ### tt04-raybox-zero-example.py
@@ -144,8 +157,8 @@ If you like, you can press CTRL+C to interrupt the code, then issue your own upd
 *   Put the player at a point on the map and with a 45-degree rotation:
     ```py
     pov.angular_pov(
-        7.0, 9.5,               # Position
-        45.0 * math.pi / 180.0  # Rotation in radians
+        7.0, 9.5,   # Position
+        deg=45      # Rotation in degrees (can also use rad=...)
     )
     ```
 *   Set the floor colour to dark red by doing: `reg.floor(0b_00_00_01)` (bit pairs are Bb_Gg_Rr).
@@ -157,7 +170,7 @@ If you like, you can press CTRL+C to interrupt the code, then issue your own upd
 
 The TT04 version of raybox-zero suffered a synthesis bug, which was evidently caused by a flawed optimisation step inside the version of OpenLane used by Tiny Tapeout 4 at the time.
 
-*   This leads to calculation errors that I think stem from a big multipler chain inside my reciprocal module approximator.
+*   This leads to calculation errors that I think stem from a big multipler chain inside my reciprocal approximator module.
 *   Since that module is used for lots of things (wall distance tracing, wall height calculation, texture scaling), the display has lots of glitches, but it's still possible to work out what the view is meant to be.
 *   The reasons we're confident this is a synthesis bug are:
     *   RTL simulation and running on an FPGA don't show the issue, but gate-level simulation seems to recreate the bug perfectly.

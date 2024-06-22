@@ -136,8 +136,12 @@ class POV(RBZSPI):
         self.set_raw_pov_chunks(*pov, debug)
         if debug: print(pov)
 
-    def angular_pov(self, px, py, a=0.0, facing=1.0, vplane=0.5, debug=False):
-        sina, cosa = math.sin(a), math.cos(a)
+    def angular_pov(self, px, py, rad=None, deg=None, facing=1.0, vplane=0.5, debug=False):
+        if rad is None and deg is None:
+            rad = 0.0
+        elif rad is None:
+            rad = deg * math.pi / 180.0
+        sina, cosa = math.sin(rad), math.cos(rad)
         pov = [
             px, py,
             sina*facing, cosa*facing,

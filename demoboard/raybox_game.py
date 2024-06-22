@@ -33,12 +33,16 @@ from raybox_controller import RayboxZeroController
 #         - SHIFT: x4
 #         - ALT: x8
 #
-#     If you hold the '7' key on your keyboard main number row, the mousewheel action
-#     instead controls the 'leak' register (displacing floor height).
+#     If you hold one of the following keyboard number row keys,
+#     the mousewheel action instead adjusts a different parameter:
+#         - 0: sky colour
+#         - 1: floor color
+#         - 2: 'leak' register (displacing floor height)
 
 # Other:
 #     ESC: Quit
 #     M or F12: Toggle mouse capture
+#     F11: Toggle system pause
 #     R: Reset game state
 #     `: Toggle vectors debug overlay
 
@@ -120,6 +124,7 @@ tick_counter    = 0     # No. of ticks that have elapsed since we started timing
 hit_counter     = 0     # No. of times we hit our timing target.
 loop_counter    = 0     # No. of iterations of our loop since last timing hit.
 event_counter   = 0
+pause           = False
 
 # Summary stuff;
 min_loops       = None  # Min. no. of loop iterations that we managed to get within a tick.
@@ -698,15 +703,26 @@ while running:
     # Get the state of all keys:
     keys = pygame.key.get_pressed()
 
+    # Check for movement keys:
+    dir_keys = list(map(lambda v: keys[v], [pygame.K_q, pygame.K_w, pygame.K_e, pygame.K_a, pygame.K_s, pygame.K_d]))
+    dir_keys[KEY_CCW  ] |= keys[pygame.K_LEFT]
+    dir_keys[KEY_CW   ] |= keys[pygame.K_RIGHT]
+    dir_keys[KEY_NORTH] |= keys[pygame.K_UP]
+    dir_keys[KEY_SOUTH] |= keys[pygame.K_DOWN]
+
+    if pygame.mouse.get_pressed()[2]:
+        dir_keys[KEY_NORTH] = True
+
     # Check if we've got any key KB/mouse/window events we have to process:
     for event in pygame.event.get():
         event_counter += 1
         if event.type == pygame.QUIT:
             print("Exiting: Pygame QUIT event")
             running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            game_map.env_flash(True)
-            player.zoom_pulse(True)
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1 and not pause:
+                game_map.env_flash(True)
+                player.zoom_pulse(True)
         elif event.type == pygame.MOUSEWHEEL:
             mult = 1.0
             add_speed = 1
@@ -715,15 +731,35 @@ while running:
             if ctrl_key:    mult *= 2
             if shift_key:   mult *= 4
             if alt_key:     mult *= 8
-            if keys[pygame.K_7]:
+            adjust_fov = True
+            if keys[pygame.K_0]:
+                adjust_fov = False
+                if FLIPPED:
+                    game_map.floor_color += event.y * add_speed * mult
+                else:
+                    game_map.sky_color += event.y * add_speed * mult
+            if keys[pygame.K_1]:
+                adjust_fov = False
+                if FLIPPED:
+                    game_map.sky_color += event.y * add_speed * mult
+                else:
+                    game_map.floor_color += event.y * add_speed * mult
+            if keys[pygame.K_2]:
+                adjust_fov = False
                 game_map.leak += event.y * add_speed * mult
-            else:
+            if adjust_fov:
                 player.facing_scaler *= 1.0 + event.y * zoom_speed * mult
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                     print("Exiting: ESC key pressed")
                     running = False
-            elif event.key == pygame.K_m | pygame.K_F12:
+            elif event.key == pygame.K_F11:
+                pause = not pause
+                if pause:
+                    print("Pausing...")
+                else:
+                    print("Resuming from pause...")
+            elif event.key == pygame.K_m or event.key == pygame.K_F12:
                 print("Toggle mouse capture:", "captured" if capture_mouse() else "released")
             elif event.key == pygame.K_r:
                 print("Reset game state")
@@ -743,19 +779,13 @@ while running:
                 elif event.key == pygame.K_KP_3: game_map.floor_color+= 1 # Increment floor colour.
                 elif event.key == pygame.K_KP_1: game_map.floor_color-= 1 # Decrement floor colour.
 
-    # Check for movement keys:
-    dir_keys = list(map(lambda v: keys[v], [pygame.K_q, pygame.K_w, pygame.K_e, pygame.K_a, pygame.K_s, pygame.K_d]))
-    dir_keys[KEY_CCW  ] |= keys[pygame.K_LEFT]
-    dir_keys[KEY_CW   ] |= keys[pygame.K_RIGHT]
-    dir_keys[KEY_NORTH] |= keys[pygame.K_UP]
-    dir_keys[KEY_SOUTH] |= keys[pygame.K_DOWN]
-
     # Update game state based on inputs and time elapsed:
     this_time = pygame.time.get_ticks()
     delta_time = this_time - last_time
     last_time = this_time
     mouse_move = mouse_delta[0] if not ROTATE_MOUSE else mouse_delta[1]
-    player.recalc_vectors(dir_keys, delta_time, mouse_move, shift_key, alt_key, game_map)
+    if not pause:
+        player.recalc_vectors(dir_keys, delta_time, mouse_move, shift_key, alt_key, game_map)
 
 
 

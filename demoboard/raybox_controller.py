@@ -29,8 +29,9 @@ class MicroPythonInterface:
         for port, desc, hwid in ports:
             print(f"{port}: {desc} - {hwid}")
         # Get last port, to use as default:
-        self.port = ports[-1].device
+        self.port = ports[-1].device # Can instead find by port.vid/.pid or even port.serial_number
         print("Using the last port by default")
+        print(f"*** NOTE: If you need to use a specific port, edit {self.__class__.__name__} in {__file__}")
         #NOTE: baudrate doesn't really make any difference for USB CDC serial devices,
         # though there is one value (1200) that is a signal to the RP2040 to reset itself.
         self.conn = serial.Serial(port=self.port, baudrate=9600)
